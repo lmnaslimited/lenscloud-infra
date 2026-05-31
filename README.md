@@ -38,6 +38,12 @@ Open this repo in the local devcontainer defined under [`.devcontainer/`](./.dev
 ## Agent Handoff
 
 Repo-local agent guidance lives in [AGENTS.md](./AGENTS.md) and [docs/agent-handoff.md](./docs/agent-handoff.md).
+The broader operating model is documented in:
+- [docs/agent-matrix.md](./docs/agent-matrix.md)
+- [docs/skills.md](./docs/skills.md)
+- [docs/mcps.md](./docs/mcps.md)
+- [docs/state-model.md](./docs/state-model.md)
+- [docs/workflows.md](./docs/workflows.md)
 
 ## Suggested Stack
 
