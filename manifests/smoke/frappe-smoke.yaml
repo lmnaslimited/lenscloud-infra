@@ -1,0 +1,108 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: frappe-mariadb-root
+  namespace: default
+type: Opaque
+stringData:
+  password: "ecuu6xOdFs64OwP3wTUk2AR2O/k5zpto"
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: dev-site-admin-password
+  namespace: default
+type: Opaque
+stringData:
+  password: "ecuu6xOdFs64OwP3wTUk2AR2O/k5zpto"
+---
+apiVersion: k8s.mariadb.com/v1alpha1
+kind: MariaDB
+metadata:
+  name: frappe-mariadb
+  namespace: default
+spec:
+  nodeSelector:
+    lenscloud.io/node-role: worker
+  rootPasswordSecretKeyRef:
+    name: frappe-mariadb-root
+    key: password
+  image: mariadb:10.11
+  storage:
+    size: 8Gi
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      cpu: "1"
+      memory: 1536Mi
+  replicas: 1
+  port: 3306
+  myCnf: |
+    [mariadb]
+    bind-address=*
+    default_storage_engine=InnoDB
+    innodb_file_per_table=1
+    max_allowed_packet=256M
+    character-set-client-handshake=FALSE
+    character-set-server=utf8mb4
+    collation-server=utf8mb4_unicode_ci
+
+    [client]
+    default-character-set=utf8mb4
+---
+apiVersion: vyogo.tech/v1
+kind: FrappeBench
+metadata:
+  name: dev-bench
+  namespace: default
+spec:
+  frappeVersion: "15"
+  podConfig:
+    nodeSelector:
+      lenscloud.io/node-role: worker
+  imageConfig:
+    repository: ghcr.io/vyogotech/frappe_base
+    tag: latest
+    pullPolicy: Always
+  apps:
+    - name: erpnext
+      source: image
+  componentAutoscaling:
+    gunicorn:
+      enabled: false
+      staticReplicas: 1
+    scheduler:
+      enabled: false
+      staticReplicas: 1
+    worker-default:
+      enabled: false
+      staticReplicas: 1
+    worker-short:
+      enabled: false
+      staticReplicas: 1
+    worker-long:
+      enabled: false
+      staticReplicas: 1
+  storageSize: 3Gi
+---
+apiVersion: vyogo.tech/v1
+kind: FrappeSite
+metadata:
+  name: dev-site
+  namespace: default
+spec:
+  benchRef:
+    name: dev-bench
+  siteName: dev.localhost
+  adminPasswordSecretRef:
+    name: dev-site-admin-password
+  dbConfig:
+    provider: mariadb
+    mode: shared
+    mariadbRef:
+      name: frappe-mariadb
+      namespace: default
+  ingress:
+    enabled: false

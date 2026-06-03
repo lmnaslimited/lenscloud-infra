@@ -1,0 +1,203 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: headlamp
+---
+apiVersion: helm.cattle.io/v1
+kind: HelmChart
+metadata:
+  name: headlamp
+  namespace: kube-system
+spec:
+  repo: https://kubernetes-sigs.github.io/headlamp/
+  chart: headlamp
+  version: 0.42.0
+  targetNamespace: headlamp
+  createNamespace: true
+  valuesContent: |-
+    replicaCount: 1
+    service:
+      type: ClusterIP
+    resources:
+      requests:
+        cpu: 10m
+        memory: 64Mi
+      limits:
+        cpu: 250m
+        memory: 256Mi
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: headlamp-frappe-operator
+  namespace: headlamp
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: frappe-platform-operator
+  namespace: default
+rules:
+  - apiGroups:
+      - vyogo.tech
+    resources:
+      - frappebenches
+      - frappesites
+      - sitebackups
+      - sitejobs
+      - siterestores
+      - siteusers
+      - siteworkspaces
+      - sitedashboards
+      - sitedashboardcharts
+      - frappeworkpaces
+    verbs:
+      - get
+      - list
+      - watch
+      - create
+      - update
+      - patch
+      - delete
+  - apiGroups:
+      - k8s.mariadb.com
+    resources:
+      - mariadbs
+      - databases
+      - users
+      - grants
+      - backups
+      - restores
+      - connections
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - ""
+    resources:
+      - pods
+      - pods/log
+      - services
+      - persistentvolumeclaims
+      - configmaps
+      - events
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - ""
+    resources:
+      - secrets
+    verbs:
+      - get
+      - list
+      - watch
+      - create
+      - update
+      - patch
+      - delete
+  - apiGroups:
+      - batch
+    resources:
+      - jobs
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - apps
+    resources:
+      - deployments
+      - statefulsets
+      - replicasets
+    verbs:
+      - get
+      - list
+      - watch
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: headlamp-frappe-readonly
+rules:
+  - apiGroups:
+      - ""
+    resources:
+      - namespaces
+      - nodes
+      - persistentvolumes
+      - pods
+      - services
+      - endpoints
+      - events
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - apiextensions.k8s.io
+    resources:
+      - customresourcedefinitions
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - vyogo.tech
+      - k8s.mariadb.com
+    resources:
+      - "*"
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - apps
+      - batch
+      - networking.k8s.io
+    resources:
+      - "*"
+    verbs:
+      - get
+      - list
+      - watch
+  - nonResourceURLs:
+      - /api
+      - /api/*
+      - /apis
+      - /apis/*
+      - /healthz
+      - /livez
+      - /readyz
+      - /version
+    verbs:
+      - get
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: headlamp-frappe-readonly
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: headlamp-frappe-readonly
+subjects:
+  - kind: ServiceAccount
+    name: headlamp-frappe-operator
+    namespace: headlamp
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: headlamp-frappe-operator
+  namespace: default
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: frappe-platform-operator
+subjects:
+  - kind: ServiceAccount
+    name: headlamp-frappe-operator
+    namespace: headlamp

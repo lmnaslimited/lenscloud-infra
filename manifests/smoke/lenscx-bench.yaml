@@ -1,0 +1,88 @@
+apiVersion: vyogo.tech/v1
+kind: FrappeBench
+metadata:
+  name: lenscx-bench
+  namespace: default
+spec:
+  frappeVersion: "15"
+  podConfig:
+    nodeSelector:
+      lenscloud.io/node-role: worker
+  imageConfig:
+    repository: ghcr.io/lmnaslimited/lensdocker/lenscx
+    tag: v15.91.2
+    pullPolicy: IfNotPresent
+  apps:
+    - name: erpnext
+      source: image
+    - name: payments
+      source: image
+    - name: pdf_on_submit
+      source: image
+  componentAutoscaling:
+    gunicorn:
+      enabled: false
+      staticReplicas: 1
+    scheduler:
+      enabled: false
+      staticReplicas: 1
+    worker-default:
+      enabled: false
+      staticReplicas: 1
+    worker-short:
+      enabled: false
+      staticReplicas: 1
+    worker-long:
+      enabled: false
+      staticReplicas: 1
+  componentResources:
+    nginx:
+      requests:
+        cpu: 1m
+        memory: 32Mi
+      limits:
+        cpu: 250m
+        memory: 128Mi
+    gunicorn:
+      requests:
+        cpu: 1m
+        memory: 128Mi
+      limits:
+        cpu: "1"
+        memory: 2Gi
+    socketio:
+      requests:
+        cpu: 1m
+        memory: 64Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+    scheduler:
+      requests:
+        cpu: 1m
+        memory: 64Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+    workerDefault:
+      requests:
+        cpu: 1m
+        memory: 64Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+    workerLong:
+      requests:
+        cpu: 1m
+        memory: 64Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+    workerShort:
+      requests:
+        cpu: 1m
+        memory: 64Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+  storageSize: 3Gi

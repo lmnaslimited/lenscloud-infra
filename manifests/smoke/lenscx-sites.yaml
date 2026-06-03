@@ -1,0 +1,65 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: onecx-admin-password
+  namespace: default
+type: Opaque
+stringData:
+  password: "ralE29CAjCf2zaww++PgNPJTmvCwtqV+"
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: twocx-admin-password
+  namespace: default
+type: Opaque
+stringData:
+  password: "d4+Ci43KzTbbeFAGRJzYv2M5AxQ+WZiW"
+---
+apiVersion: vyogo.tech/v1
+kind: FrappeSite
+metadata:
+  name: onecx
+  namespace: default
+spec:
+  benchRef:
+    name: lenscx-bench
+  siteName: onecx.localhost
+  adminPasswordSecretRef:
+    name: onecx-admin-password
+  apps:
+    - erpnext
+    - payments
+    - pdf_on_submit
+  dbConfig:
+    provider: mariadb
+    mode: shared
+    mariadbRef:
+      name: frappe-mariadb
+      namespace: default
+  ingress:
+    enabled: false
+---
+apiVersion: vyogo.tech/v1
+kind: FrappeSite
+metadata:
+  name: twocx
+  namespace: default
+spec:
+  benchRef:
+    name: lenscx-bench
+  siteName: twocx.localhost
+  adminPasswordSecretRef:
+    name: twocx-admin-password
+  apps:
+    - erpnext
+    - payments
+    - pdf_on_submit
+  dbConfig:
+    provider: mariadb
+    mode: shared
+    mariadbRef:
+      name: frappe-mariadb
+      namespace: default
+  ingress:
+    enabled: false

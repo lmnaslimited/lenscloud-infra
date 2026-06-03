@@ -1,0 +1,21 @@
+apiVersion: helm.cattle.io/v1
+kind: HelmChart
+metadata:
+  name: mariadb-operator-crds
+  namespace: kube-system
+spec:
+  repo: https://mariadb-operator.github.io/mariadb-operator
+  chart: mariadb-operator-crds
+  targetNamespace: mariadb-operator-system
+  createNamespace: true
+---
+apiVersion: helm.cattle.io/v1
+kind: HelmChart
+metadata:
+  name: mariadb-operator
+  namespace: kube-system
+spec:
+  repo: https://mariadb-operator.github.io/mariadb-operator
+  chart: mariadb-operator
+  targetNamespace: mariadb-operator-system
+  createNamespace: true
