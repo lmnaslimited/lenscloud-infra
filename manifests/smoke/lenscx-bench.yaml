@@ -86,3 +86,9 @@ spec:
         cpu: 500m
         memory: 512Mi
   storageSize: 3Gi
+  dbConfig:
+    provider: mariadb
+    mode: shared
+    mariadbRef:
+      name: frappe-mariadb
+      namespace: default

@@ -22,18 +22,29 @@ Provision and bootstrap the Kubernetes substrate that LensCloud Platform will ma
 - Register the cluster for LensCloud management after bootstrap.
 - Expose Headlamp through a dedicated `lmnaslens` subdomain.
 - Prepare Headlamp as the first multi-cluster operations UI.
+- Keep `lmnaslens.com` authoritative in GoDaddy.
+- Configure `cloud.lmnaslens.com` and `*.cloud.lmnaslens.com` in GoDaddy.
+- Use Certbot DNS-01 with infrastructure-only GoDaddy production API credentials for the EU wildcard certificate.
+- Issue and renew a wildcard certificate for `*.cloud.lmnaslens.com`.
+- Prefer Traefik as the target customer-site ingress layer.
 
 ### Environment Separation
 - Support separate clusters or isolated runtime pools for Quality and Production.
 - Support separate runtime and database placement where needed.
 - Support region-specific cluster templates.
 - Support EU first and US later using the same cluster contract.
+- Support first-class MariaDB runtime handoff to LensCloud Platform.
+- Support shared MariaDB capacity used by multiple Benches when platform privacy policy permits it.
+- Keep operator-managed Database Server and Bench in the same Region and Cluster for the first implementation.
 
 ### Operations
 - Support idempotent re-runs.
 - Support safe upgrades.
 - Support teardown with explicit confirmation.
 - Produce clear logs and artifacts for handoff.
+- Provide non-secret MariaDB CR handoff values and verification commands.
+- Provide wildcard DNS, TLS, ingress, and route-readiness handoff values.
+- Keep GoDaddy credentials infrastructure-only and out of LensCloud Platform.
 
 ## Non-Functional Requirements
 
@@ -46,6 +57,7 @@ Provision and bootstrap the Kubernetes substrate that LensCloud Platform will ma
 
 - Terraform vs shell-first bootstrap after the first SOP-backed implementation
 - Single-cluster-per-region vs multiple clusters per environment
-- Whether DNS is managed here or by a separate automation layer
 - Whether cluster registration is pull-based or push-based
 - Database HA architecture; do not use NFS as primary database storage by default
+- Production NetworkPolicy, TLS, backup, capacity, and isolation profiles for Public, Private Shared, and Private database services
+- Multi-region wildcard origin routing before EU and US simultaneously serve the same customer domain

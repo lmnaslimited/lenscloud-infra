@@ -4,6 +4,18 @@ set -euo pipefail
 PUBLIC_IP="${1:?manager public IP required}"
 PRIVATE_IP="${2:?manager private IP required}"
 
+install -d -m 755 /etc/ssh/sshd_config.d
+cat >/etc/ssh/sshd_config.d/99-lenscloud.conf <<'EOF'
+PasswordAuthentication no
+KbdInteractiveAuthentication no
+PermitRootLogin prohibit-password
+PubkeyAuthentication yes
+MaxAuthTries 3
+EOF
+chmod 644 /etc/ssh/sshd_config.d/99-lenscloud.conf
+sshd -t
+systemctl restart ssh
+
 if ! swapon --show | grep -q /swapfile; then
   fallocate -l 4G /swapfile
   chmod 600 /swapfile

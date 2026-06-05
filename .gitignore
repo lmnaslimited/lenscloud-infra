@@ -9,4 +9,6 @@
 *.out
 *.pem
 *.key
-
+*.ini
+manifests/generated/
+certbot/.env

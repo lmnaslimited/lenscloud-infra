@@ -1,21 +1,3 @@
-apiVersion: v1
-kind: Secret
-metadata:
-  name: frappe-mariadb-root
-  namespace: default
-type: Opaque
-stringData:
-  password: "ecuu6xOdFs64OwP3wTUk2AR2O/k5zpto"
----
-apiVersion: v1
-kind: Secret
-metadata:
-  name: dev-site-admin-password
-  namespace: default
-type: Opaque
-stringData:
-  password: "ecuu6xOdFs64OwP3wTUk2AR2O/k5zpto"
----
 apiVersion: k8s.mariadb.com/v1alpha1
 kind: MariaDB
 metadata:
@@ -86,6 +68,12 @@ spec:
       enabled: false
       staticReplicas: 1
   storageSize: 3Gi
+  dbConfig:
+    provider: mariadb
+    mode: shared
+    mariadbRef:
+      name: frappe-mariadb
+      namespace: default
 ---
 apiVersion: vyogo.tech/v1
 kind: FrappeSite
@@ -98,11 +86,5 @@ spec:
   siteName: dev.localhost
   adminPasswordSecretRef:
     name: dev-site-admin-password
-  dbConfig:
-    provider: mariadb
-    mode: shared
-    mariadbRef:
-      name: frappe-mariadb
-      namespace: default
   ingress:
     enabled: false

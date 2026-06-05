@@ -13,7 +13,6 @@ set -euo pipefail
 : "${MANAGER_TYPE:=cx23}"
 : "${WORKER_TYPE:=cx33}"
 : "${SSH_KEY_NAME:=team-lead-key}"
-: "${ADMIN_CIDR:?Set ADMIN_CIDR, for example: export ADMIN_CIDR=\"$(curl -fsSL https://ifconfig.me)/32\"}"
 
 ensure_network() {
   if ! hcloud network describe "$NETWORK_NAME" >/dev/null 2>&1; then
@@ -31,12 +30,11 @@ ensure_firewall() {
   fi
 
   if ! hcloud firewall describe "$FIREWALL_NAME" -o json | jq -e '.rules | length > 0' >/dev/null; then
-    hcloud firewall add-rule "$FIREWALL_NAME" --direction in --protocol tcp --port 22 --source-ips "$ADMIN_CIDR"
+    hcloud firewall add-rule "$FIREWALL_NAME" --direction in --protocol tcp --port 22 --source-ips 0.0.0.0/0 --source-ips ::/0 --description ssh-key-only
     hcloud firewall add-rule "$FIREWALL_NAME" --direction in --protocol tcp --port 80 --source-ips 0.0.0.0/0 --source-ips ::/0
     hcloud firewall add-rule "$FIREWALL_NAME" --direction in --protocol tcp --port 443 --source-ips 0.0.0.0/0 --source-ips ::/0
     hcloud firewall add-rule "$FIREWALL_NAME" --direction in --protocol tcp --port any --source-ips "$NETWORK_CIDR"
     hcloud firewall add-rule "$FIREWALL_NAME" --direction in --protocol udp --port any --source-ips "$NETWORK_CIDR"
-    hcloud firewall add-rule "$FIREWALL_NAME" --direction in --protocol icmp --source-ips "$ADMIN_CIDR"
     hcloud firewall add-rule "$FIREWALL_NAME" --direction in --protocol icmp --source-ips "$NETWORK_CIDR"
   fi
 }

@@ -1,0 +1,39 @@
+apiVersion: k8s.mariadb.com/v1alpha1
+kind: MariaDB
+metadata:
+  name: frappe-mariadb
+  namespace: default
+  labels:
+    lenscloud.io/database-server: eu-shared-mariadb-01
+    lenscloud.io/privacy: public
+spec:
+  nodeSelector:
+    lenscloud.io/node-role: worker
+  rootPasswordSecretKeyRef:
+    name: frappe-mariadb-root
+    key: password
+  image: mariadb:10.11
+  storage:
+    size: 8Gi
+    storageClassName: local-path
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      cpu: "1"
+      memory: 1536Mi
+  replicas: 1
+  port: 3306
+  myCnf: |
+    [mariadb]
+    bind-address=*
+    default_storage_engine=InnoDB
+    innodb_file_per_table=1
+    max_allowed_packet=256M
+    character-set-client-handshake=FALSE
+    character-set-server=utf8mb4
+    collation-server=utf8mb4_unicode_ci
+
+    [client]
+    default-character-set=utf8mb4

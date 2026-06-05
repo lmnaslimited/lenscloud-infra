@@ -5,6 +5,18 @@ MANAGER_PRIVATE_IP="${1:?manager private IP required}"
 NODE_TOKEN="${2:?K3s node token required}"
 WORKER_PRIVATE_IP="${3:?worker private IP required}"
 
+install -d -m 755 /etc/ssh/sshd_config.d
+cat >/etc/ssh/sshd_config.d/99-lenscloud.conf <<'EOF'
+PasswordAuthentication no
+KbdInteractiveAuthentication no
+PermitRootLogin prohibit-password
+PubkeyAuthentication yes
+MaxAuthTries 3
+EOF
+chmod 644 /etc/ssh/sshd_config.d/99-lenscloud.conf
+sshd -t
+systemctl restart ssh
+
 if ! swapon --show | grep -q /swapfile; then
   fallocate -l 4G /swapfile
   chmod 600 /swapfile

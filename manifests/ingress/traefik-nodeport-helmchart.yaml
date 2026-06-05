@@ -1,0 +1,59 @@
+apiVersion: helm.cattle.io/v1
+kind: HelmChart
+metadata:
+  name: traefik
+  namespace: kube-system
+spec:
+  repo: https://traefik.github.io/charts
+  chart: traefik
+  version: 40.2.0
+  targetNamespace: traefik
+  createNamespace: true
+  valuesContent: |-
+    deployment:
+      replicas: 1
+    ingressClass:
+      enabled: true
+      isDefaultClass: false
+      name: traefik
+    providers:
+      kubernetesIngress:
+        enabled: true
+        ingressClass: traefik
+      kubernetesCRD:
+        enabled: true
+    ports:
+      web:
+        port: 8000
+        exposedPort: 80
+        nodePort: 30080
+        protocol: TCP
+        http:
+          redirections:
+            entryPoint:
+              to: websecure
+              scheme: https
+              permanent: true
+      websecure:
+        port: 8443
+        exposedPort: 443
+        nodePort: 30443
+        protocol: TCP
+    service:
+      spec:
+        type: NodePort
+    nodeSelector:
+      lenscloud.io/node-role: worker
+    resources:
+      requests:
+        cpu: 50m
+        memory: 128Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+    logs:
+      general:
+        level: INFO
+    additionalArguments:
+      - --entryPoints.web.forwardedHeaders.insecure=true
+      - --entryPoints.websecure.forwardedHeaders.insecure=true

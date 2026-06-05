@@ -1,0 +1,60 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: traefik-smoke
+  namespace: default
+spec:
+  selector:
+    app: traefik-smoke
+  ports:
+    - name: http
+      port: 80
+      targetPort: 8080
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: traefik-smoke
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: traefik-smoke
+  template:
+    metadata:
+      labels:
+        app: traefik-smoke
+    spec:
+      nodeSelector:
+        lenscloud.io/node-role: worker
+      containers:
+        - name: echo
+          image: hashicorp/http-echo:1.0.0
+          args:
+            - -listen=:8080
+            - -text=traefik-side-by-side-ok
+          ports:
+            - containerPort: 8080
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: traefik-smoke
+  namespace: default
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+    traefik.ingress.kubernetes.io/router.tls: "true"
+spec:
+  ingressClassName: traefik
+  rules:
+    - host: traefik-smoke.cloud.lmnaslens.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: traefik-smoke
+                port:
+                  number: 80

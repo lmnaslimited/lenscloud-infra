@@ -24,11 +24,15 @@ export WORKER_NAME=lenscloud-eu-worker-1
 export MANAGER_TYPE=cx23
 export WORKER_TYPE=cx33
 export SSH_KEY_NAME=team-lead-key
-export ADMIN_CIDR="$(curl -fsSL https://ifconfig.me)/32"
 export HEADLAMP_HOST=headlamp.eu.lmnaslens.com
 
 ./scripts/10-create-hcloud-eu-nodes.sh
 ```
+
+Port 22 is reachable from any source because platform operators may use
+changing ISP or hotspot addresses. Both bootstrap scripts enforce SSH public-key
+authentication, disable password and keyboard-interactive authentication, and
+limit root login to keys.
 
 ## 2. Capture Node Addresses
 
@@ -105,13 +109,24 @@ Create or update this DNS record:
 headlamp.eu.lmnaslens.com -> MANAGER_PUBLIC_IP
 ```
 
-For the first pass this is HTTP. Add TLS after HTTP access is verified.
-
 The live EU dev cluster currently uses:
 
 ```text
 headlamp.eu.lmnaslens.com -> 116.203.22.81
 ```
+
+Customer Site DNS/TLS is a separate shared wildcard edge:
+
+```text
+lmnaslens.com -> GoDaddy authoritative DNS
+cloud.lmnaslens.com and *.cloud.lmnaslens.com -> EU ingress endpoint
+```
+
+Do not create per-Site DNS records. Follow
+[traefik-wildcard-tls-sop.md](./traefik-wildcard-tls-sop.md) to stage Traefik,
+issue the shared certificate, cut over public ports, and test rollback. Until
+that work is completed, customer hostnames are not production-ready even if
+FrappeSite resources are Ready.
 
 ## 9. Run Smoke Test
 

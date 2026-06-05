@@ -1,0 +1,43 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: certbot-wildcard-issue
+  namespace: lenscloud-edge
+spec:
+  backoffLimit: 1
+  template:
+    spec:
+      serviceAccountName: certbot-wildcard
+      restartPolicy: Never
+      nodeSelector:
+        lenscloud.io/node-role: worker
+      containers:
+        - name: certbot
+          image: ${CERTBOT_IMAGE}
+          imagePullPolicy: IfNotPresent
+          args: ["issue"]
+          env:
+            - name: CERTBOT_EMAIL
+              value: ${CERTBOT_EMAIL}
+            - name: CERTBOT_DOMAIN
+              value: cloud.lmnaslens.com
+            - name: CERTBOT_PROPAGATION_SECONDS
+              value: "900"
+            - name: TLS_SECRET_NAMESPACE
+              value: traefik
+            - name: TLS_SECRET_NAME
+              value: lenscloud-cloud-wildcard-tls
+          volumeMounts:
+            - name: certbot-state
+              mountPath: /etc/letsencrypt
+            - name: godaddy-credentials
+              mountPath: /var/run/godaddy
+              readOnly: true
+      volumes:
+        - name: certbot-state
+          persistentVolumeClaim:
+            claimName: certbot-state
+        - name: godaddy-credentials
+          secret:
+            secretName: godaddy-dns-api
+            defaultMode: 0400

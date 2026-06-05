@@ -11,10 +11,16 @@ kubectl -n headlamp get pods,svc,ingress
 kubectl -n headlamp create token headlamp-frappe-operator
 ```
 
-Open:
+Current pre-cutover URL:
 
 ```text
 http://headlamp.eu.lmnaslens.com
+```
+
+Target after the Traefik/wildcard TLS cutover:
+
+```text
+https://headlamp.cloud.lmnaslens.com
 ```
 
 Current DNS target:

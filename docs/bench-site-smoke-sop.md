@@ -26,6 +26,9 @@ nodeSelector:
 
 This proves the first placement rule: app/database pods run on the worker node, while Kubernetes administration stays on the manager.
 
+The reusable model puts `dbConfig.mariadbRef` on `FrappeBench`; Sites inherit
+that database server.
+
 If the generic smoke test passes, the LensCX custom image can be tested next:
 
 ```bash
@@ -33,3 +36,24 @@ kubectl apply -f manifests/smoke/lenscx-bench.yaml
 kubectl apply -f manifests/smoke/lenscx-sites.yaml
 ```
 
+Run the proven two-Bench smoke:
+
+```bash
+./scripts/42-run-shared-database-smoke.sh
+```
+
+It creates two separate `FrappeBench` resources that both carry:
+
+```yaml
+spec:
+  dbConfig:
+    provider: mariadb
+    mode: shared
+    mariadbRef:
+      name: frappe-mariadb
+      namespace: default
+```
+
+The script creates one Site under each Bench and verifies distinct logical
+database/user identifiers and credential Secrets on the same MariaDB server.
+See [database-server-runtime-contract.md](./database-server-runtime-contract.md).

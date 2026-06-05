@@ -1,0 +1,48 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: lenscloud-edge
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: certbot-wildcard
+  namespace: lenscloud-edge
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: wildcard-tls-secret-writer
+  namespace: traefik
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    resourceNames: ["lenscloud-cloud-wildcard-tls"]
+    verbs: ["get", "patch", "update"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: certbot-wildcard-secret-writer
+  namespace: traefik
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: wildcard-tls-secret-writer
+subjects:
+  - kind: ServiceAccount
+    name: certbot-wildcard
+    namespace: lenscloud-edge
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: certbot-state
+  namespace: lenscloud-edge
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: local-path
+  resources:
+    requests:
+      storage: 1Gi

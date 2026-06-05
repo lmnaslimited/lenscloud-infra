@@ -58,7 +58,8 @@ The first live runtime target is a two-node EU K3s cluster:
 
 - manager: `lenscloud-eu-manager-1`
 - worker: `lenscloud-eu-worker-1`
-- Headlamp: `headlamp.eu.lmnaslens.com`
+- current Headlamp: `headlamp.eu.lmnaslens.com`
+- target Headlamp after wildcard TLS cutover: `headlamp.cloud.lmnaslens.com`
 
 Current live status is captured in [docs/live-eu-cluster-status.md](./docs/live-eu-cluster-status.md).
 
@@ -70,6 +71,9 @@ Supporting SOPs:
 - [docs/headlamp-sop.md](./docs/headlamp-sop.md)
 - [docs/bench-site-smoke-sop.md](./docs/bench-site-smoke-sop.md)
 - [docs/platform-handoff-contract.md](./docs/platform-handoff-contract.md)
+- [docs/database-server-runtime-contract.md](./docs/database-server-runtime-contract.md)
+- [docs/wildcard-edge-contract.md](./docs/wildcard-edge-contract.md)
+- [docs/traefik-wildcard-tls-sop.md](./docs/traefik-wildcard-tls-sop.md)
 
 Local Docker-only runtime planning is tracked in [docs/local-docker-runtime.md](./docs/local-docker-runtime.md). This workstream is for standalone developer setups that use Docker Desktop only, with Kubernetes tooling running inside repo-provided containers rather than on the host machine.
 

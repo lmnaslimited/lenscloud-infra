@@ -56,8 +56,8 @@ For the LensCloud Kubernetes runtime:
 
 - Headlamp is the preferred Kubernetes UI.
 - Portainer may be optional for Docker container visibility, but it should not become the Kubernetes source of truth.
-- ingress-nginx should remain the default local ingress for parity with the EU runtime.
-- A Traefik local profile can be added later if the platform team specifically wants to preserve the previous mental model.
+- Traefik should become the target local ingress for parity with the wildcard edge architecture.
+- ingress-nginx may remain a temporary compatibility profile while the EU cluster migration is validated.
 
 ## Planned Files
 

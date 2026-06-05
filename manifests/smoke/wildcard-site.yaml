@@ -1,0 +1,21 @@
+apiVersion: vyogo.tech/v1
+kind: FrappeSite
+metadata:
+  name: wildcard-smoke
+  namespace: default
+spec:
+  benchRef:
+    name: shared-db-bench-a
+  siteName: wildcard-smoke.cloud.lmnaslens.com
+  domain: wildcard-smoke.cloud.lmnaslens.com
+  adminPasswordSecretRef:
+    name: wildcard-smoke-admin-password
+  ingressClassName: traefik
+  ingress:
+    enabled: true
+    className: traefik
+    annotations:
+      traefik.ingress.kubernetes.io/router.entrypoints: websecure
+      traefik.ingress.kubernetes.io/router.tls: "true"
+  tls:
+    enabled: false

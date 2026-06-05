@@ -1,0 +1,183 @@
+apiVersion: vyogo.tech/v1
+kind: FrappeBench
+metadata:
+  name: shared-db-bench-a
+  namespace: default
+spec:
+  frappeVersion: "15"
+  podConfig:
+    nodeSelector:
+      lenscloud.io/node-role: worker
+  imageConfig:
+    repository: ghcr.io/vyogotech/frappe_base
+    tag: latest
+    pullPolicy: IfNotPresent
+  apps:
+    - name: erpnext
+      source: image
+  componentAutoscaling:
+    gunicorn:
+      enabled: false
+      staticReplicas: 1
+    scheduler:
+      enabled: false
+      staticReplicas: 0
+    worker-default:
+      enabled: false
+      staticReplicas: 0
+    worker-short:
+      enabled: false
+      staticReplicas: 0
+    worker-long:
+      enabled: false
+      staticReplicas: 0
+  componentResources:
+    nginx:
+      requests:
+        cpu: 25m
+        memory: 64Mi
+    gunicorn:
+      requests:
+        cpu: 50m
+        memory: 128Mi
+    socketio:
+      requests:
+        cpu: 25m
+        memory: 64Mi
+    scheduler:
+      requests:
+        cpu: 25m
+        memory: 64Mi
+    workerDefault:
+      requests:
+        cpu: 25m
+        memory: 64Mi
+    workerShort:
+      requests:
+        cpu: 25m
+        memory: 64Mi
+    workerLong:
+      requests:
+        cpu: 25m
+        memory: 64Mi
+  storageSize: 3Gi
+  dbConfig:
+    provider: mariadb
+    mode: shared
+    mariadbRef:
+      name: frappe-mariadb
+      namespace: default
+---
+apiVersion: vyogo.tech/v1
+kind: FrappeBench
+metadata:
+  name: shared-db-bench-b
+  namespace: default
+spec:
+  frappeVersion: "15"
+  podConfig:
+    nodeSelector:
+      lenscloud.io/node-role: worker
+  imageConfig:
+    repository: ghcr.io/vyogotech/frappe_base
+    tag: latest
+    pullPolicy: IfNotPresent
+  apps:
+    - name: erpnext
+      source: image
+  componentAutoscaling:
+    gunicorn:
+      enabled: false
+      staticReplicas: 1
+    scheduler:
+      enabled: false
+      staticReplicas: 0
+    worker-default:
+      enabled: false
+      staticReplicas: 0
+    worker-short:
+      enabled: false
+      staticReplicas: 0
+    worker-long:
+      enabled: false
+      staticReplicas: 0
+  componentResources:
+    nginx:
+      requests:
+        cpu: 25m
+        memory: 64Mi
+    gunicorn:
+      requests:
+        cpu: 50m
+        memory: 128Mi
+    socketio:
+      requests:
+        cpu: 25m
+        memory: 64Mi
+    scheduler:
+      requests:
+        cpu: 25m
+        memory: 64Mi
+    workerDefault:
+      requests:
+        cpu: 25m
+        memory: 64Mi
+    workerShort:
+      requests:
+        cpu: 25m
+        memory: 64Mi
+    workerLong:
+      requests:
+        cpu: 25m
+        memory: 64Mi
+  storageSize: 3Gi
+  dbConfig:
+    provider: mariadb
+    mode: shared
+    mariadbRef:
+      name: frappe-mariadb
+      namespace: default
+---
+apiVersion: vyogo.tech/v1
+kind: FrappeSite
+metadata:
+  name: shared-db-site-a
+  namespace: default
+spec:
+  benchRef:
+    name: shared-db-bench-a
+  siteName: shared-db-a.cloud.lmnaslens.com
+  domain: shared-db-a.cloud.lmnaslens.com
+  adminPasswordSecretRef:
+    name: shared-db-site-a-admin-password
+  ingressClassName: traefik
+  ingress:
+    enabled: true
+    className: traefik
+    annotations:
+      traefik.ingress.kubernetes.io/router.entrypoints: websecure
+      traefik.ingress.kubernetes.io/router.tls: "true"
+  tls:
+    enabled: false
+---
+apiVersion: vyogo.tech/v1
+kind: FrappeSite
+metadata:
+  name: shared-db-site-b
+  namespace: default
+spec:
+  benchRef:
+    name: shared-db-bench-b
+  siteName: shared-db-b.cloud.lmnaslens.com
+  domain: shared-db-b.cloud.lmnaslens.com
+  adminPasswordSecretRef:
+    name: shared-db-site-b-admin-password
+  ingressClassName: traefik
+  ingress:
+    enabled: true
+    className: traefik
+    annotations:
+      traefik.ingress.kubernetes.io/router.entrypoints: websecure
+      traefik.ingress.kubernetes.io/router.tls: "true"
+  tls:
+    enabled: false
