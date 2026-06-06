@@ -30,6 +30,8 @@
 - Hcloud port `6443` is restricted to the current Platform host public IPv4.
   Refresh it with `scripts/52-authorize-platform-api.sh` when that address
   changes.
+- Moving laptops can keep the `/32` synchronized during a development session
+  with `scripts/52-authorize-platform-api.sh --watch`.
 - Generate a Headlamp token on the manager:
 
 ```bash
@@ -119,6 +121,10 @@ Current state:
 The GoDaddy wildcard record resolves customer hostnames to `116.203.22.81`.
 
 EU customer Site HTTPS is Ready for the Phase 1 wildcard domain contract.
+
+The current Platform acceptance capacity and preservation boundary are recorded
+in
+[platform-live-orchestration-readiness.md](./platform-live-orchestration-readiness.md).
 
 The Frappe Operator pairing that worked is:
 

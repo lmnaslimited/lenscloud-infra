@@ -73,6 +73,7 @@ Supporting SOPs:
 - [docs/platform-handoff-contract.md](./docs/platform-handoff-contract.md)
 - [docs/platform-restricted-access-contract.md](./docs/platform-restricted-access-contract.md)
 - [docs/platform-restricted-access-sop.md](./docs/platform-restricted-access-sop.md)
+- [docs/platform-live-orchestration-readiness.md](./docs/platform-live-orchestration-readiness.md)
 - [docs/database-server-runtime-contract.md](./docs/database-server-runtime-contract.md)
 - [docs/wildcard-edge-contract.md](./docs/wildcard-edge-contract.md)
 - [docs/traefik-wildcard-tls-sop.md](./docs/traefik-wildcard-tls-sop.md)

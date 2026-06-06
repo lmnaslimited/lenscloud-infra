@@ -49,6 +49,10 @@ It must not grant:
 - Refresh the Hcloud port 6443 source rule with
   `scripts/52-authorize-platform-api.sh` whenever the platform host public IP
   changes. Do not expose the Kubernetes API to `0.0.0.0/0`.
+- For mobile development hosts that switch networks, run
+  `scripts/52-authorize-platform-api.sh --watch` during the orchestration
+  session. It keeps the named rule synchronized to exactly one current `/32`
+  without installing host software.
 
 ## Handoff Verification
 

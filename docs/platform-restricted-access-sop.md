@@ -51,6 +51,24 @@ cd /Users/arunkumar.ganesan/lensk8s/lenscloud-infra
 The script replaces the previous `lenscloud-platform-api` firewall source with
 the current IPv4 `/32`. It does not expose port 6443 globally.
 
+For a laptop that moves between office Wi-Fi and a personal hotspot, keep the
+watch mode running in a host terminal during the live orchestration session:
+
+```bash
+cd /Users/arunkumar.ganesan/lensk8s/lenscloud-infra
+./scripts/52-authorize-platform-api.sh --watch
+```
+
+Watch mode polls the public IPv4 every 30 seconds and changes the firewall only
+when the address changes. It uses the already installed `hcloud`, `jq`, and
+`curl` commands, installs no host package, and never broadens the rule beyond
+one `/32`. Override the interval only when needed:
+
+```bash
+PLATFORM_API_WATCH_INTERVAL=15 \
+  ./scripts/52-authorize-platform-api.sh --watch
+```
+
 ## Deliver The Kubeconfig
 
 ```bash
