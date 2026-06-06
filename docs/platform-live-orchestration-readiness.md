@@ -52,6 +52,13 @@ sequentially with lightweight smoke resources. It does not have comfortable
 request headroom for all Public, Private Shared, and Private temporary
 topologies to coexist.
 
+The Public acceptance incident proved that
+`ghcr.io/lmnaslimited/lensdocker/lenscx:v15.91.2` lacks the operator-required
+`/home/frappe/assets_cache`. Do not begin another live Site scenario with that
+image. Capacity is Ready, but application acceptance is blocked until a
+corrected image passes the release-image compatibility gate documented in
+[incidents/2026-06-06-public-site-assets.md](./incidents/2026-06-06-public-site-assets.md).
+
 Required order:
 
 1. Run the Public scenario and capture evidence.
