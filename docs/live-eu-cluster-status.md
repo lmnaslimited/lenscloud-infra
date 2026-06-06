@@ -20,6 +20,16 @@
 - Kubernetes CLI runs on the manager VM.
 - Current Headlamp URL: `https://headlamp.cloud.lmnaslens.com`
 - Legacy rollback URL: `http://headlamp.eu.lmnaslens.com`
+- LensCloud Platform service account: `lenscloud-platform-system/lenscloud-platform`
+- Controlled Platform runtime namespace: `lenscloud-runtime-eu`
+- Platform credential reference: `file:/run/secrets/lenscloud-eu.kubeconfig`
+- Restricted kubeconfig delivery and read-only devcontainer mount: Ready
+- Positive and negative RBAC verification: Passed on June 6, 2026
+- LensCloud `KubernetesClient` permission verification from the devcontainer:
+  Passed on June 6, 2026
+- Hcloud port `6443` is restricted to the current Platform host public IPv4.
+  Refresh it with `scripts/52-authorize-platform-api.sh` when that address
+  changes.
 - Generate a Headlamp token on the manager:
 
 ```bash

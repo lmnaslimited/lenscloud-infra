@@ -14,7 +14,16 @@ Required fields:
 - operator namespace: `frappe-operator-system`
 - default runtime namespace: `default` for smoke, later `lenscloud-runtime-eu`
 - default storage class: `local-path`
-- Kubernetes credential reference: stored server-side only
+- target Kubernetes credential reference:
+  `file:/run/secrets/lenscloud-eu.kubeconfig`
+
+The restricted service-account kubeconfig is a required external prerequisite,
+not a committed repo artifact. Its contract is defined in
+[platform-restricted-access-contract.md](./platform-restricted-access-contract.md).
+Infra delivered and verified this prerequisite on June 6, 2026. Real Platform
+apply should remain disabled until the Platform agent runs its own permission
+preflight, confirms capacity, and begins the controlled live acceptance
+sequence.
 
 ## Bench Creation Mapping
 
@@ -81,6 +90,10 @@ LensCloud Platform creates Site/runtime/routing resources only. Infra owns share
 
 Current readiness:
 
+- restricted Platform service account and RBAC: Ready
+- restricted kubeconfig delivered and mounted read-only: Ready
+- host-side positive and negative permission verification: Passed
+- LensCloud backend Kubernetes client permission verification: Passed
 - shared MariaDB Bench/Site contract: Ready
 - Traefik ingress class and dynamic host routing: Ready
 - public Traefik cutover: Ready
@@ -106,3 +119,17 @@ The Frappe frontend must not talk to Kubernetes directly. LensCloud Platform sho
 - read shared wildcard DNS/TLS/ingress readiness
 
 Use idempotent upsert behavior keyed by operator resource name and namespace.
+
+## Privacy Acceptance Handoff
+
+The Platform milestone must prove all three LensCloud privacy policies:
+
+- `Public`: existing `default/frappe-mariadb` may serve Benches from unrelated
+  customers while Sites retain distinct logical databases and credentials.
+- `Private Shared`: one customer-owned MariaDB may serve multiple Benches owned
+  by that customer, and must reject another customer.
+- `Private`: one MariaDB is exclusive to one Bench and must reject every second
+  Bench, including one owned by the same customer.
+
+MariaDB Operator/Frappe Operator `mode: shared` describes database topology. It
+does not override these LensCloud ownership and placement rules.

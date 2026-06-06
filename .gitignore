@@ -1,7 +1,6 @@
 .artifacts/
 .local/
 *.kubeconfig
-*kubeconfig*
 *node-token*
 *.token
 *.secret

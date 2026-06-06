@@ -58,8 +58,8 @@ The first live runtime target is a two-node EU K3s cluster:
 
 - manager: `lenscloud-eu-manager-1`
 - worker: `lenscloud-eu-worker-1`
-- current Headlamp: `headlamp.eu.lmnaslens.com`
-- target Headlamp after wildcard TLS cutover: `headlamp.cloud.lmnaslens.com`
+- current Headlamp: `https://headlamp.cloud.lmnaslens.com`
+- ingress: Traefik with wildcard HTTPS
 
 Current live status is captured in [docs/live-eu-cluster-status.md](./docs/live-eu-cluster-status.md).
 
@@ -71,6 +71,8 @@ Supporting SOPs:
 - [docs/headlamp-sop.md](./docs/headlamp-sop.md)
 - [docs/bench-site-smoke-sop.md](./docs/bench-site-smoke-sop.md)
 - [docs/platform-handoff-contract.md](./docs/platform-handoff-contract.md)
+- [docs/platform-restricted-access-contract.md](./docs/platform-restricted-access-contract.md)
+- [docs/platform-restricted-access-sop.md](./docs/platform-restricted-access-sop.md)
 - [docs/database-server-runtime-contract.md](./docs/database-server-runtime-contract.md)
 - [docs/wildcard-edge-contract.md](./docs/wildcard-edge-contract.md)
 - [docs/traefik-wildcard-tls-sop.md](./docs/traefik-wildcard-tls-sop.md)

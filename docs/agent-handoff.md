@@ -33,6 +33,8 @@ This repository is the bootstrap and substrate layer for LensCloud. It should re
 - Database Server privacy, ownership, capacity policy, and Bench attachment belong in `lenscloud-platform`.
 - Read `docs/database-server-runtime-contract.md` before changing MariaDB smoke resources or platform handoff values.
 - Read `docs/wildcard-edge-contract.md` before changing ingress, DNS, TLS, or Site routing.
+- Read `docs/platform-restricted-access-contract.md` before handing Kubernetes
+  credentials to LensCloud Platform.
 - Preserve the DNS ownership boundary: GoDaddy owns DNS and infrastructure-only
   ACME credentials; LensCloud Platform owns neither DNS records nor provider
   credentials for standard Sites.
