@@ -24,4 +24,5 @@ This repository owns the Hcloud and Kubernetes bootstrap layer for LensCloud.
 - [README.md](./README.md)
 - [requirements.md](./requirements.md)
 - [docs/agent-handoff.md](./docs/agent-handoff.md)
-
+- [docs/infra-workitems.md](./docs/infra-workitems.md)
+- [docs/platform-runtime-lifecycle-handoff.md](./docs/platform-runtime-lifecycle-handoff.md)

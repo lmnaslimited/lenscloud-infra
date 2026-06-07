@@ -35,6 +35,9 @@ This repository is the bootstrap and substrate layer for LensCloud. It should re
 - Read `docs/wildcard-edge-contract.md` before changing ingress, DNS, TLS, or Site routing.
 - Read `docs/platform-restricted-access-contract.md` before handing Kubernetes
   credentials to LensCloud Platform.
+- Read `docs/platform-runtime-lifecycle-handoff.md` before changing runtime
+  CRUD/delete permissions or Platform ownership boundaries.
+- Track active Infra milestones in `docs/infra-workitems.md`.
 - Preserve the DNS ownership boundary: GoDaddy owns DNS and infrastructure-only
   ACME credentials; LensCloud Platform owns neither DNS records nor provider
   credentials for standard Sites.

@@ -29,7 +29,8 @@ Updated on June 7, 2026.
 - Wildcard certificate expires September 3, 2026 at 14:49 UTC.
 - Certbot renewal CronJob is active.
 - Existing `default/frappe-mariadb` is Ready.
-- The controlled runtime namespace was clean after the image acceptance test.
+- The completed Public acceptance resources under
+  `run-20260607-0623` may still be present pending exact-prefix cleanup.
 
 The only current warning is a CoreDNS `DNSConfigForming` warning caused by the
 host nameserver count. CoreDNS remains Ready and this does not block the
@@ -45,7 +46,7 @@ Worker snapshot:
 - scheduled memory requests: `3718 MiB`, 47%
 - local disk: about `59 GiB` free
 - swap: 4 GiB, effectively unused
-- controlled runtime namespace baseline: empty after image acceptance cleanup
+- controlled runtime namespace: Public acceptance resources pending cleanup
 - preserved database baseline: one MariaDB in `default`
 
 The cluster has enough capacity for each acceptance scenario when they are run
@@ -93,45 +94,21 @@ Preserve:
   cluster infrastructure;
 - Kubernetes Secrets that are not owned by a Bench/Site being removed.
 
-The platform team may retire old LensCloud Bench/Site records and their
-corresponding FrappeBench/FrappeSite resources because they are no longer
-required for this acceptance cycle. Inventory and match each platform record
-to its namespace/resource before deletion. Never perform a broad namespace
-delete.
+The one-time Public acceptance cleanup uses manager credentials because those
+resources predate the ownership-label admission contract. After Platform adds
+the required labels and lifecycle APIs, routine cleanup must use the restricted
+Platform identity and must not require manager access.
 
 New acceptance resources must use a unique `run-*` prefix in
 `lenscloud-runtime-eu`.
 
 ## Scoped Cleanup
 
-Run cleanup from the manager only after setting the exact acceptance prefix:
+Run the guarded helper from the manager only after setting the exact acceptance
+prefix:
 
 ```bash
-export RUN_PREFIX=run-YYYYMMDD-HHMM
-export RUN_NAMESPACE=lenscloud-runtime-eu
-
-case "$RUN_PREFIX" in
-  run-*) ;;
-  *) echo "RUN_PREFIX must begin with run-" >&2; exit 1 ;;
-esac
-
-for resource in \
-  frappesites.vyogo.tech \
-  frappebenches.vyogo.tech \
-  mariadbs.k8s.mariadb.com \
-  jobs.batch \
-  secrets \
-  persistentvolumeclaims
-do
-  kubectl -n "$RUN_NAMESPACE" get "$resource" -o name |
-    while IFS=/ read -r kind name; do
-      case "$name" in
-        "$RUN_PREFIX"|"$RUN_PREFIX"-*)
-          kubectl -n "$RUN_NAMESPACE" delete "$kind/$name" --ignore-not-found
-          ;;
-      esac
-    done
-done
+RUN_PREFIX=run-20260607-0623 ./scripts/56-cleanup-platform-run.sh
 ```
 
 Verify that the prefix is gone and the preserved baseline is still Ready:

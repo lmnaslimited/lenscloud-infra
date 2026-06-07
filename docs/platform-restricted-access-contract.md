@@ -15,11 +15,14 @@ Infra must create a dedicated service account for LensCloud Platform with the
 minimum permissions required to:
 
 - read Cluster discovery and health information needed by the client
-- get, list, watch, create, patch, and update MariaDB resources
-- get, list, watch, create, patch, and update FrappeBench and FrappeSite
+- get, list, watch, create, patch, update, and delete MariaDB resources in the
+  controlled runtime namespace
+- get, list, watch, create, patch, update, and delete FrappeBench and
+  FrappeSite in the controlled runtime namespace
 - get, list, and watch related Pods, Services, PVCs, Events, Jobs, and Ingresses
-- create or update only the runtime Secrets that the approved provisioning
-  workflow owns
+- create, update, and delete only runtime Secrets that the approved
+  provisioning workflow owns
+- delete labelled owned Jobs and PVCs when operator cleanup requires it
 - read status subresources required for synchronization
 
 It must not grant:
@@ -44,8 +47,8 @@ It must not grant:
 - Do not store kubeconfig content in a DocType field, action log, manifest
   preview, API response, frontend state, or browser storage.
 - Use `lenscloud-runtime-eu` as the controlled Phase 1 runtime namespace.
-- The existing shared MariaDB remains in `default`; the credential may reconcile
-  that MariaDB but receives no Secret access in `default`.
+- The existing shared MariaDB remains in `default`; the credential has
+  read-only MariaDB access and no Secret access in `default`.
 - Refresh the Hcloud port 6443 source rule with
   `scripts/52-authorize-platform-api.sh` whenever the platform host public IP
   changes. Do not expose the Kubernetes API to `0.0.0.0/0`.
@@ -58,7 +61,8 @@ It must not grant:
 
 Before Platform enables apply, Infra must publish non-secret evidence that:
 
-1. the service account can read and reconcile the approved runtime resources;
+1. the service account can read, reconcile, and delete approved owned runtime
+   resources;
 2. it cannot mutate Nodes, CRDs, operator deployments, or unrelated Secrets;
 3. the kubeconfig path is readable by the Frappe backend process only;
 4. credential rotation and revocation steps are documented;
@@ -66,22 +70,26 @@ Before Platform enables apply, Infra must publish non-secret evidence that:
 
 ## Current EU Delivery Status
 
-Delivered and verified on June 6, 2026:
+Baseline access was delivered on June 6, 2026. The June 7 lifecycle extension
+adds:
 
 - service account: `lenscloud-platform-system/lenscloud-platform`
 - controlled runtime namespace: `lenscloud-runtime-eu`
 - credential reference: `file:/run/secrets/lenscloud-eu.kubeconfig`
 - kubeconfig stored outside Git and mounted read-only in the Platform
   devcontainer
-- required positive permissions passed
+- runtime delete rights for MariaDB, FrappeBench, and FrappeSite
+- delete rights for labelled owned Jobs, PVCs, and Secrets
+- an admission guard requiring `lenscloud.io/managed-by=platform` for direct
+  deletes by the Platform identity
+- read-only access to the protected `default` MariaDB namespace
 - prohibited Node, CRD, namespace, operator, and unrelated Secret permissions
   were denied
-- LensCloud's own `KubernetesClient` completed the required MariaDB,
-  FrappeBench, and FrappeSite permission checks
 
-The Infra prerequisite is complete. LensCloud reconciliation remains dry-run
-until the Platform agent explicitly enables apply for the controlled live
-acceptance sequence.
+Native RBAC cannot enforce arbitrary label-qualified delete rules. Infra uses
+a ValidatingAdmissionPolicy for the primary ownership label. LensCloud must
+enforce exact document identity, customer/privacy ownership, dependency checks,
+and the protected-resource denylist before issuing an operation.
 
 The repeatable commands are in
 [platform-restricted-access-sop.md](./platform-restricted-access-sop.md).

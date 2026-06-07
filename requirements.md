@@ -45,6 +45,15 @@ Provision and bootstrap the Kubernetes substrate that LensCloud Platform will ma
 - Provide non-secret MariaDB CR handoff values and verification commands.
 - Provide wildcard DNS, TLS, ingress, and route-readiness handoff values.
 - Keep GoDaddy credentials infrastructure-only and out of LensCloud Platform.
+- Hand routine runtime lifecycle authority to the dedicated Platform service
+  account after cluster registration.
+- Permit namespace-scoped create, inspect, reconcile, and delete for
+  Platform-owned MariaDB, FrappeBench, and FrappeSite resources.
+- Protect `MariaDB/default/frappe-mariadb`, unlabelled resources, cluster
+  infrastructure, operators, edge resources, and infrastructure Secrets.
+- Enforce the Platform ownership label at admission for direct runtime deletes;
+  require LensCloud to enforce document identity, customer/privacy, dependency,
+  role, and confirmation policy.
 
 ## Non-Functional Requirements
 

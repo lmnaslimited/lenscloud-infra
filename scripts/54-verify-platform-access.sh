@@ -7,16 +7,23 @@ export KUBECONFIG="$PLATFORM_KUBECONFIG"
 
 required=(
   "get mariadbs.k8s.mariadb.com default"
-  "patch mariadbs.k8s.mariadb.com default"
   "create mariadbs.k8s.mariadb.com lenscloud-runtime-eu"
   "patch frappebenches.vyogo.tech lenscloud-runtime-eu"
+  "delete frappebenches.vyogo.tech lenscloud-runtime-eu"
   "patch frappesites.vyogo.tech lenscloud-runtime-eu"
+  "delete frappesites.vyogo.tech lenscloud-runtime-eu"
+  "delete mariadbs.k8s.mariadb.com lenscloud-runtime-eu"
   "get secrets lenscloud-runtime-eu"
   "create secrets lenscloud-runtime-eu"
+  "delete secrets lenscloud-runtime-eu"
+  "delete jobs.batch lenscloud-runtime-eu"
+  "delete persistentvolumeclaims lenscloud-runtime-eu"
   "get ingresses.networking.k8s.io lenscloud-runtime-eu"
 )
 
 denied=(
+  "patch mariadbs.k8s.mariadb.com default"
+  "delete mariadbs.k8s.mariadb.com default"
   "get nodes _cluster"
   "get customresourcedefinitions.apiextensions.k8s.io _cluster"
   "create namespaces _cluster"
@@ -55,4 +62,4 @@ done
 kubectl get mariadb frappe-mariadb -n default -o name
 kubectl get frappebench,frappesite -n lenscloud-runtime-eu
 
-echo "Restricted LensCloud Platform RBAC verification passed."
+echo "Restricted LensCloud Platform lifecycle RBAC verification passed."

@@ -11,6 +11,8 @@
 - configure and verify one wildcard DNS record
 - issue and renew wildcard TLS through DNS-01
 - hand wildcard edge readiness to LensCloud Platform
+- hand namespace-scoped runtime lifecycle authority to LensCloud Platform
+- verify managed deletes and protected/unowned deletion denials
 
 ## Later
 
@@ -29,3 +31,8 @@
 - Prove that multiple Benches can reference one MariaDB CR before designing HA.
 - Do not create per-Site DNS records or certificates for standard customer Sites.
 - Do not remove shared wildcard DNS, issuer, or TLS resources during Site deletion.
+- Prefer deletion of the owner CR and normal operator finalizer cleanup.
+- Require `lenscloud.io/managed-by=platform` for direct Platform deletes.
+- Keep `default/frappe-mariadb` read-only to the Platform service account.
+- Treat manager cleanup as break-glass or one-time migration work, not the
+  normal Platform operating model.

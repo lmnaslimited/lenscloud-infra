@@ -25,19 +25,24 @@ cd /root/lenscloud-infra
 ./scripts/51-install-platform-access.sh
 ./scripts/53-generate-platform-kubeconfig.sh
 ./scripts/54-verify-platform-access.sh
+./scripts/55-verify-platform-lifecycle.sh
 ```
 
 The service account can:
 
-- reconcile the existing MariaDB in `default`;
+- read the existing MariaDB in `default`;
 - reconcile MariaDB, FrappeBench, and FrappeSite in
   `lenscloud-runtime-eu`;
+- delete labelled Platform-owned MariaDB, FrappeBench, and FrappeSite
+  resources in `lenscloud-runtime-eu`;
 - read runtime Pods, Services, PVCs, Events, Jobs, and Ingresses;
-- get and create Site/admin or database bootstrap Secrets only in
+- get, create, update, and delete owned Site/admin or database bootstrap
+  Secrets only in
   `lenscloud-runtime-eu`.
 
-It cannot mutate Nodes, namespaces, CRDs, operators, system deployments, or
-infrastructure Secrets.
+It cannot mutate `default/frappe-mariadb`, Nodes, namespaces, CRDs, operators,
+system deployments, or infrastructure Secrets. Direct runtime deletes are
+rejected unless the resource has `lenscloud.io/managed-by=platform`.
 
 ## Authorize The Platform Host
 
@@ -142,6 +147,9 @@ kubectl -n lenscloud-platform-system delete serviceaccount lenscloud-platform
 kubectl delete clusterrolebinding lenscloud-platform-access-reviewer
 kubectl delete rolebinding lenscloud-platform-existing-database -n default
 kubectl delete rolebinding lenscloud-platform-runtime -n lenscloud-runtime-eu
+kubectl delete validatingadmissionpolicybinding \
+  lenscloud-platform-owned-delete
+kubectl delete validatingadmissionpolicy lenscloud-platform-owned-delete
 ```
 
 Remove the `lenscloud-platform-api` firewall rule if the integration is no

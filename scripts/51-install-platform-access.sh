@@ -13,5 +13,7 @@ kubectl wait \
 kubectl get serviceaccount,secret -n lenscloud-platform-system
 kubectl get role,rolebinding -n default
 kubectl get role,rolebinding -n lenscloud-runtime-eu
+kubectl get validatingadmissionpolicy,validatingadmissionpolicybinding \
+  lenscloud-platform-owned-delete
 
 echo "Restricted LensCloud Platform service account installed."
