@@ -10,7 +10,8 @@ Work inside:
 
 Start from LensCloud Platform version-16 revision 818c262 or a compatible newer
 revision. Treat the adjacent lenscloud-infra checkout as read-only runtime
-truth. Confirm it contains:
+truth. Require Infra revision `1f57682` or a compatible newer revision and
+confirm it contains:
 
 - docs/platform-runtime-lifecycle-handoff.md
 - docs/platform-restricted-access-contract.md

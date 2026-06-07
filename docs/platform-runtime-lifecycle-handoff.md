@@ -1,5 +1,7 @@
 # Platform Runtime Lifecycle Handoff
 
+Minimum Infra lifecycle implementation revision: `1f57682`.
+
 ## Authority
 
 After cluster handoff, LensCloud Platform owns routine lifecycle operations for
