@@ -1,4 +1,4 @@
-# Public Site HTTP 500 Incident
+# Public Site HTTP 500 Incident - Resolved
 
 ## Scope
 
@@ -127,6 +127,44 @@ The Release Group app metadata must also be complete so `spec.apps` reflects
 the intended image applications. This was not the cause of this HTTP 500, but
 an empty app declaration can produce an incomplete Site installation.
 
+## Resolution
+
+Resolved on June 7, 2026.
+
+The `frappe_docker` `lens-pure` branch now preserves the normal
+`sites/assets` build output and also copies it to the Frappe Operator cache
+location:
+
+```dockerfile
+COPY --from=builder --chown=frappe:frappe \
+  /home/frappe/frappe-bench/sites/assets \
+  /home/frappe/assets_cache
+
+RUN test -s /home/frappe/assets_cache/assets.json
+```
+
+Validated release image:
+
+- image: `ghcr.io/lmnaslimited/lensdocker/lens-pure:v16.14.1`
+- digest:
+  `sha256:86dd9bec4ef7ef255bff6596b15480e88b3fb27751e1c88b22167ff69fb4a2a2`
+- Frappe: `16.14.0`
+- ERPNext: `16.13.1`
+
+Live operator acceptance proved:
+
+- `/home/frappe/assets_cache/assets.json` exists in the image;
+- the Bench init Job logs `Syncing pre-built assets from image to PVC`;
+- the shared PVC contains `assets.json`, `assets-rtl.json`, and built assets;
+- the FrappeBench and FrappeSite reach `Ready`;
+- the Site login page returns HTTPS 200;
+- a generated CSS bundle returns HTTPS 200;
+- Administrator authentication succeeds;
+- no recent gunicorn or nginx errors are present.
+
+The isolated validation resources were deleted. `default/frappe-mariadb` and
+both cluster nodes remained healthy.
+
 ## Preservation And Cleanup
 
 All resources in `default`, including `frappe-mariadb` and the pre-existing
@@ -154,7 +192,9 @@ The worker returned to the normal baseline with approximately 5.4 GiB
 available memory and 56 GiB free local disk. Infrastructure capacity is
 available for the remaining scenarios sequentially.
 
-Live Site acceptance remains blocked, however, until an operator-compatible
-release image with a valid `/home/frappe/assets_cache` is published and selected
-by LensCloud. Reusing `lenscx:v15.91.2` would reproduce the HTTP 500 regardless
-of Public, Private Shared, or Private database placement.
+The image blocker is closed. LensCloud Platform may resume the Public, Private
+Shared, and Private acceptance scenarios using only the validated `lens-pure`
+release or a later image that passes the same compatibility gate.
+
+`lenscx:v15.91.2` remains incompatible and must not be selected for new
+operator-managed Benches.

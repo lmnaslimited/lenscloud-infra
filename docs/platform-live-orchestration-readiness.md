@@ -2,7 +2,7 @@
 
 ## Audit
 
-Validated on June 6, 2026 against Infra revision `1d5d5f3`.
+Updated on June 7, 2026.
 
 - Kubernetes API is reachable from the LensCloud Platform devcontainer.
 - The Hcloud `lenscloud-platform-api` firewall rule contains exactly one current
@@ -29,7 +29,7 @@ Validated on June 6, 2026 against Infra revision `1d5d5f3`.
 - Wildcard certificate expires September 3, 2026 at 14:49 UTC.
 - Certbot renewal CronJob is active.
 - Existing `default/frappe-mariadb` is Ready.
-- Existing FrappeBench and FrappeSite resources are Ready.
+- The controlled runtime namespace was clean after the image acceptance test.
 
 The only current warning is a CoreDNS `DNSConfigForming` warning caused by the
 host nameserver count. CoreDNS remains Ready and this does not block the
@@ -45,18 +45,24 @@ Worker snapshot:
 - scheduled memory requests: `3718 MiB`, 47%
 - local disk: about `59 GiB` free
 - swap: 4 GiB, effectively unused
-- running workload baseline: three Benches and one MariaDB
+- controlled runtime namespace baseline: empty after image acceptance cleanup
+- preserved database baseline: one MariaDB in `default`
 
 The cluster has enough capacity for each acceptance scenario when they are run
 sequentially with lightweight smoke resources. It does not have comfortable
 request headroom for all Public, Private Shared, and Private temporary
 topologies to coexist.
 
-The Public acceptance incident proved that
-`ghcr.io/lmnaslimited/lensdocker/lenscx:v15.91.2` lacks the operator-required
-`/home/frappe/assets_cache`. Do not begin another live Site scenario with that
-image. Capacity is Ready, but application acceptance is blocked until a
-corrected image passes the release-image compatibility gate documented in
+The corrected image passed the release-image compatibility gate:
+
+- `ghcr.io/lmnaslimited/lensdocker/lens-pure:v16.14.1`
+- digest:
+  `sha256:86dd9bec4ef7ef255bff6596b15480e88b3fb27751e1c88b22167ff69fb4a2a2`
+- Frappe `16.14.0`, ERPNext `16.13.1`
+- Bench/Site Ready, HTTPS login 200, generated CSS 200, Administrator login
+  passed
+
+The asset incident is closed. See
 [incidents/2026-06-06-public-site-assets.md](./incidents/2026-06-06-public-site-assets.md).
 
 Required order:
@@ -78,22 +84,23 @@ Stop live apply if any of these occur:
 - an acceptance pod remains Pending for more than five minutes;
 - an operator, Traefik, MariaDB, or wildcard TLS health check fails.
 
-## Preservation Boundary
+## Cleanup Boundary
 
-Do not delete or replace resources in `default`, including:
+Preserve:
 
-- `MariaDB/frappe-mariadb`
-- `FrappeBench/dev-bench`
-- `FrappeBench/shared-db-bench-a`
-- `FrappeBench/shared-db-bench-b`
-- `FrappeSite/dev-site`
-- `FrappeSite/shared-db-site-a`
-- `FrappeSite/shared-db-site-b`
-- `FrappeSite/wildcard-smoke`
-- their Secrets, PVCs, Services, workloads, or routes
+- `MariaDB/default/frappe-mariadb`;
+- operators, Traefik, wildcard TLS, Certbot, Headlamp, namespaces, RBAC, and
+  cluster infrastructure;
+- Kubernetes Secrets that are not owned by a Bench/Site being removed.
 
-Acceptance resources must use names beginning with a unique `run-*` prefix and
-must be created only in `lenscloud-runtime-eu`.
+The platform team may retire old LensCloud Bench/Site records and their
+corresponding FrappeBench/FrappeSite resources because they are no longer
+required for this acceptance cycle. Inventory and match each platform record
+to its namespace/resource before deletion. Never perform a broad namespace
+delete.
+
+New acceptance resources must use a unique `run-*` prefix in
+`lenscloud-runtime-eu`.
 
 ## Scoped Cleanup
 

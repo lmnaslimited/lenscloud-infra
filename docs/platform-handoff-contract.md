@@ -103,6 +103,11 @@ Current readiness:
 - Certbot renewal dry-run: Passed
 - Headlamp HTTPS: Ready
 - ingress-nginx: removed after successful rollback rehearsal
+- validated operator-compatible release image:
+  `ghcr.io/lmnaslimited/lensdocker/lens-pure:v16.14.1`
+- validated image digest:
+  `sha256:86dd9bec4ef7ef255bff6596b15480e88b3fb27751e1c88b22167ff69fb4a2a2`
+- live Frappe `16.14.0` and ERPNext `16.13.1` Site acceptance: Passed
 
 LensCloud may mark the EU Phase 1 edge `Ready`. It should continue to monitor
 certificate expiry, renewal Job status, ingress health, and route health.
@@ -133,3 +138,16 @@ The Platform milestone must prove all three LensCloud privacy policies:
 
 MariaDB Operator/Frappe Operator `mode: shared` describes database topology. It
 does not override these LensCloud ownership and placement rules.
+
+## Release Image Gate
+
+Before LensCloud marks a Release deployable, verify:
+
+- `/home/frappe/assets_cache/assets.json` exists and is non-empty;
+- the expected Frappe major and included apps match Release metadata;
+- a Bench init Job copies the cache into the shared assets PVC;
+- a smoke Site returns HTTPS 200 and serves a generated CSS bundle.
+
+The approved Phase 1 Release Group is `lens-pure`. Create a Release for tag
+`v16.14.1` and record the validated digest above. Do not reuse
+`lenscx:v15.91.2`.
