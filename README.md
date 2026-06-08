@@ -75,6 +75,7 @@ Supporting SOPs:
 - [docs/platform-restricted-access-sop.md](./docs/platform-restricted-access-sop.md)
 - [docs/platform-live-orchestration-readiness.md](./docs/platform-live-orchestration-readiness.md)
 - [docs/platform-runtime-lifecycle-handoff.md](./docs/platform-runtime-lifecycle-handoff.md)
+- [docs/platform-runtime-lifecycle-evidence-20260608.md](./docs/platform-runtime-lifecycle-evidence-20260608.md)
 - [docs/platform-agent-runtime-lifecycle-prompt.md](./docs/platform-agent-runtime-lifecycle-prompt.md)
 - [docs/infra-workitems.md](./docs/infra-workitems.md)
 - [docs/incidents/2026-06-06-public-site-assets.md](./docs/incidents/2026-06-06-public-site-assets.md)

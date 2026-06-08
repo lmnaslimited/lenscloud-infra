@@ -2,6 +2,9 @@
 
 Minimum Infra lifecycle implementation revision: `1f57682`.
 
+Live EU verification was completed against revision `5dd4178` on June 8, 2026.
+See `docs/platform-runtime-lifecycle-evidence-20260608.md`.
+
 ## Authority
 
 After cluster handoff, LensCloud Platform owns routine lifecycle operations for
@@ -82,3 +85,7 @@ At Platform revision `818c262`:
 Platform must never remove finalizers manually as a normal lifecycle action.
 An operator finalizer failure becomes `Deletion Failed` with diagnostic
 evidence and an explicit Infra escalation.
+
+MariaDB finalizer completion does not imply data PVC deletion. Platform must
+inventory the attributable PVC and apply its explicit retain/delete data
+policy before retiring the Database Server document.

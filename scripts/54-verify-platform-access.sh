@@ -18,6 +18,11 @@ required=(
   "delete secrets lenscloud-runtime-eu"
   "delete jobs.batch lenscloud-runtime-eu"
   "delete persistentvolumeclaims lenscloud-runtime-eu"
+  "list pods lenscloud-runtime-eu"
+  "list services lenscloud-runtime-eu"
+  "list jobs.batch lenscloud-runtime-eu"
+  "list persistentvolumeclaims lenscloud-runtime-eu"
+  "list events lenscloud-runtime-eu"
   "get ingresses.networking.k8s.io lenscloud-runtime-eu"
 )
 
@@ -27,9 +32,18 @@ denied=(
   "get nodes _cluster"
   "get customresourcedefinitions.apiextensions.k8s.io _cluster"
   "create namespaces _cluster"
+  "delete namespaces _cluster"
+  "patch storageclasses.storage.k8s.io _cluster"
   "patch deployments.apps kube-system"
+  "patch deployments.apps frappe-operator-system"
+  "patch deployments.apps mariadb-operator-system"
+  "patch deployments.apps traefik"
   "get secrets default"
   "get secrets traefik"
+  "delete secrets default"
+  "delete secrets traefik"
+  "delete frappebenches.vyogo.tech default"
+  "delete frappesites.vyogo.tech default"
   "list secrets lenscloud-runtime-eu"
 )
 
