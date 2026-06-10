@@ -121,3 +121,5 @@ This final test-artifact deletion was pending when the execution approval
 quota interrupted the session. It does not block Platform lifecycle authority
 or sequential acceptance capacity, but must be removed before calling the
 runtime namespace empty.
+
+Final note: The final clean up was done manually.
