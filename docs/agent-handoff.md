@@ -38,6 +38,9 @@ This repository is the bootstrap and substrate layer for LensCloud. It should re
 - Read `docs/platform-runtime-lifecycle-handoff.md` before changing runtime
   CRUD/delete permissions or Platform ownership boundaries.
 - Track active Infra milestones in `docs/infra-workitems.md`.
+- Use `docs/test-cluster-build-handoff-sop.md` and its handoff record template
+  for fresh project/cluster acceptance; do not reconstruct the process from
+  incident notes.
 - Preserve the DNS ownership boundary: GoDaddy owns DNS and infrastructure-only
   ACME credentials; LensCloud Platform owns neither DNS records nor provider
   credentials for standard Sites.

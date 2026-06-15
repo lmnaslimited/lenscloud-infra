@@ -12,7 +12,8 @@ set -euo pipefail
 : "${WORKER_NAME:=lenscloud-eu-worker-1}"
 : "${MANAGER_TYPE:=cx23}"
 : "${WORKER_TYPE:=cx33}"
-: "${SSH_KEY_NAME:=team-lead-key}"
+: "${REGION:=eu}"
+: "${SSH_KEY_NAMES:?Set SSH_KEY_NAMES to comma-separated operator and team-lead key names}"
 
 ensure_network() {
   if ! hcloud network describe "$NETWORK_NAME" >/dev/null 2>&1; then
@@ -42,9 +43,24 @@ ensure_firewall() {
 ensure_server() {
   local name="$1"
   local type="$2"
+  local ssh_key_args=()
+  local ssh_key
 
   if hcloud server describe "$name" >/dev/null 2>&1; then
     return
+  fi
+
+  IFS=',' read -r -a ssh_keys <<<"$SSH_KEY_NAMES"
+  for ssh_key in "${ssh_keys[@]}"; do
+    ssh_key="${ssh_key#"${ssh_key%%[![:space:]]*}"}"
+    ssh_key="${ssh_key%"${ssh_key##*[![:space:]]}"}"
+    [[ -n "$ssh_key" ]] || continue
+    ssh_key_args+=(--ssh-key "$ssh_key")
+  done
+
+  if [[ "${#ssh_key_args[@]}" -lt 2 ]]; then
+    echo "SSH_KEY_NAMES must contain at least operator and team-lead key names." >&2
+    return 1
   fi
 
   hcloud server create \
@@ -52,11 +68,11 @@ ensure_server() {
     --type "$type" \
     --image ubuntu-24.04 \
     --location "$LOCATION" \
-    --ssh-key "$SSH_KEY_NAME" \
+    "${ssh_key_args[@]}" \
     --network "$NETWORK_NAME" \
     --firewall "$FIREWALL_NAME" \
     --label "lenscloud.io/cluster=$CLUSTER_NAME" \
-    --label "lenscloud.io/region=eu"
+    --label "lenscloud.io/region=$REGION"
 }
 
 ensure_network

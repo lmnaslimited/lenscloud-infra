@@ -67,6 +67,8 @@ Recreate it with [docs/eu-cluster-sop.md](./docs/eu-cluster-sop.md).
 
 Supporting SOPs:
 
+- [docs/test-cluster-build-handoff-sop.md](./docs/test-cluster-build-handoff-sop.md)
+- [docs/test-cluster-handoff-record-template.md](./docs/test-cluster-handoff-record-template.md)
 - [docs/operator-install-sop.md](./docs/operator-install-sop.md)
 - [docs/headlamp-sop.md](./docs/headlamp-sop.md)
 - [docs/bench-site-smoke-sop.md](./docs/bench-site-smoke-sop.md)

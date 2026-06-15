@@ -2,6 +2,8 @@
 set -euo pipefail
 
 : "${WILDCARD_TARGET:=116.203.22.81}"
+: "${WILDCARD_SMOKE_HOST:=wildcard-smoke.cloud.lmnaslens.com}"
+: "${HEADLAMP_HOST:=headlamp.cloud.lmnaslens.com}"
 
 kubectl get nodes -o wide
 kubectl get pods -A -o wide
@@ -17,9 +19,9 @@ expiry="$(
 )"
 echo "$expiry"
 
-curl -fsSI --resolve "wildcard-smoke.cloud.lmnaslens.com:443:${WILDCARD_TARGET}" \
-  https://wildcard-smoke.cloud.lmnaslens.com/ | head
-curl -fsSI --resolve "headlamp.cloud.lmnaslens.com:443:${WILDCARD_TARGET}" \
-  https://headlamp.cloud.lmnaslens.com/ | head
+curl -fsSI --resolve "${WILDCARD_SMOKE_HOST}:443:${WILDCARD_TARGET}" \
+  "https://${WILDCARD_SMOKE_HOST}/" | head
+curl -fsSI --resolve "${HEADLAMP_HOST}:443:${WILDCARD_TARGET}" \
+  "https://${HEADLAMP_HOST}/" | head
 
 echo "EU wildcard edge verification passed."

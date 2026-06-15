@@ -1,0 +1,97 @@
+apiVersion: vyogo.tech/v1
+kind: FrappeBench
+metadata:
+  name: handoff-bench
+  namespace: default
+  labels:
+    lenscloud.io/test-purpose: cluster-handoff
+spec:
+  frappeVersion: "16"
+  podConfig:
+    nodeSelector:
+      lenscloud.io/node-role: worker
+  imageConfig:
+    repository: ghcr.io/lmnaslimited/lensdocker/lens-pure
+    tag: v16.14.1
+    pullPolicy: IfNotPresent
+  apps:
+    - name: ERPNext
+      source: image
+  componentAutoscaling:
+    gunicorn:
+      enabled: false
+      staticReplicas: 1
+    scheduler:
+      enabled: false
+      staticReplicas: 0
+    worker-default:
+      enabled: false
+      staticReplicas: 0
+    worker-short:
+      enabled: false
+      staticReplicas: 0
+    worker-long:
+      enabled: false
+      staticReplicas: 0
+  componentResources:
+    nginx:
+      requests:
+        cpu: 25m
+        memory: 64Mi
+    gunicorn:
+      requests:
+        cpu: 50m
+        memory: 128Mi
+    socketio:
+      requests:
+        cpu: 25m
+        memory: 64Mi
+    scheduler:
+      requests:
+        cpu: 25m
+        memory: 64Mi
+    workerDefault:
+      requests:
+        cpu: 25m
+        memory: 64Mi
+    workerShort:
+      requests:
+        cpu: 25m
+        memory: 64Mi
+    workerLong:
+      requests:
+        cpu: 25m
+        memory: 64Mi
+  storageClassName: local-path
+  storageSize: 3Gi
+  dbConfig:
+    provider: mariadb
+    mode: shared
+    mariadbRef:
+      name: frappe-mariadb
+      namespace: default
+---
+apiVersion: vyogo.tech/v1
+kind: FrappeSite
+metadata:
+  name: handoff-site
+  namespace: default
+  labels:
+    lenscloud.io/test-purpose: cluster-handoff
+spec:
+  benchRef:
+    name: handoff-bench
+    namespace: default
+  siteName: ${HANDOFF_SITE_HOST}
+  domain: ${HANDOFF_SITE_HOST}
+  adminPasswordSecretRef:
+    name: handoff-site-admin-password
+  ingressClassName: traefik
+  ingress:
+    enabled: true
+    className: traefik
+    annotations:
+      traefik.ingress.kubernetes.io/router.entrypoints: websecure
+      traefik.ingress.kubernetes.io/router.tls: "true"
+  tls:
+    enabled: false

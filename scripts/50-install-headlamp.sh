@@ -1,8 +1,14 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+: "${HEADLAMP_HOST:=headlamp.cloud.lmnaslens.com}"
+
 kubectl apply -f manifests/ui/headlamp-helmchart.yaml
-kubectl apply -f manifests/ui/headlamp-ingress.yaml
+tmp_manifest="$(mktemp)"
+trap 'rm -f "$tmp_manifest"' EXIT
+sed "s/headlamp\\.cloud\\.lmnaslens\\.com/${HEADLAMP_HOST}/g" \
+  manifests/ui/headlamp-ingress.yaml >"$tmp_manifest"
+kubectl apply -f "$tmp_manifest"
 
 for _ in $(seq 1 90); do
   if kubectl -n headlamp get deployment headlamp >/dev/null 2>&1; then

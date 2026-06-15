@@ -23,7 +23,7 @@ export MANAGER_NAME=lenscloud-eu-manager-1
 export WORKER_NAME=lenscloud-eu-worker-1
 export MANAGER_TYPE=cx23
 export WORKER_TYPE=cx33
-export SSH_KEY_NAME=team-lead-key
+export SSH_KEY_NAMES=infra-operator-key,team-lead-key
 export HEADLAMP_HOST=headlamp.eu.lmnaslens.com
 
 ./scripts/10-create-hcloud-eu-nodes.sh

@@ -4,6 +4,9 @@ set -euo pipefail
 : "${KUBECONFIG:=/etc/rancher/k3s/k3s.yaml}"
 : "${PLATFORM_API_SERVER:=https://116.203.22.81:6443}"
 : "${OUTPUT_PATH:=.artifacts/lenscloud-eu.kubeconfig}"
+: "${PLATFORM_CLUSTER_NAME:=lenscloud-eu-dev}"
+: "${PLATFORM_RUNTIME_NAMESPACE:=lenscloud-runtime-eu}"
+: "${PLATFORM_CONTEXT_NAME:=lenscloud-platform@${PLATFORM_CLUSTER_NAME}}"
 
 mkdir -p "$(dirname "$OUTPUT_PATH")"
 umask 077
@@ -29,7 +32,7 @@ cat >"$OUTPUT_PATH" <<EOF
 apiVersion: v1
 kind: Config
 clusters:
-  - name: lenscloud-eu-dev
+  - name: ${PLATFORM_CLUSTER_NAME}
     cluster:
       server: ${PLATFORM_API_SERVER}
       certificate-authority-data: ${ca_data}
@@ -38,12 +41,12 @@ users:
     user:
       token: ${token}
 contexts:
-  - name: lenscloud-platform@lenscloud-eu-dev
+  - name: ${PLATFORM_CONTEXT_NAME}
     context:
-      cluster: lenscloud-eu-dev
+      cluster: ${PLATFORM_CLUSTER_NAME}
       user: lenscloud-platform
-      namespace: lenscloud-runtime-eu
-current-context: lenscloud-platform@lenscloud-eu-dev
+      namespace: ${PLATFORM_RUNTIME_NAMESPACE}
+current-context: ${PLATFORM_CONTEXT_NAME}
 EOF
 
 chmod 600 "$OUTPUT_PATH"

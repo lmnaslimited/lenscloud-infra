@@ -20,7 +20,7 @@ spec:
             - name: CERTBOT_EMAIL
               value: ${CERTBOT_EMAIL}
             - name: CERTBOT_DOMAIN
-              value: cloud.lmnaslens.com
+              value: ${CERTBOT_DOMAIN}
             - name: CERTBOT_PROPAGATION_SECONDS
               value: "900"
             - name: TLS_SECRET_NAMESPACE
