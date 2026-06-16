@@ -613,6 +613,7 @@ Create the baseline MariaDB Secret without printing its value:
 
 ```bash
 ./scripts/41-create-smoke-secrets.sh
+kubectl get secret handoff-site-admin-password
 kubectl apply -f manifests/database/eu-shared-mariadb-template.yaml
 kubectl wait --for=condition=Ready mariadb/frappe-mariadb --timeout=15m
 ```
@@ -628,6 +629,33 @@ envsubst < manifests/smoke/handoff-bench-site.template.yaml \
 kubectl apply -f "$HANDOFF_MANIFEST"
 kubectl wait --for=jsonpath='{.status.phase}'=Ready \
   frappebench/handoff-bench --timeout=20m
+kubectl wait --for=jsonpath='{.status.phase}'=Ready \
+  frappesite/handoff-site --timeout=20m
+```
+
+If `handoff-site` already exists and reports
+`SiteInitializationFailed: Secret "handoff-site-admin-password" not found`,
+create the missing secret and force a fresh reconciliation:
+
+```bash
+./scripts/41-create-smoke-secrets.sh
+kubectl get secret handoff-site-admin-password
+
+kubectl annotate frappesite handoff-site \
+  lenscloud.io/retry-at="$(date +%s)" \
+  --overwrite
+
+kubectl wait --for=jsonpath='{.status.phase}'=Ready \
+  frappesite/handoff-site --timeout=20m
+```
+
+If the Site remains Pending after the annotation, delete and recreate only the
+Site. Keep the Bench and MariaDB:
+
+```bash
+kubectl delete frappesite handoff-site --wait=false
+kubectl wait --for=delete frappesite/handoff-site --timeout=10m
+kubectl apply -f "$HANDOFF_MANIFEST"
 kubectl wait --for=jsonpath='{.status.phase}'=Ready \
   frappesite/handoff-site --timeout=20m
 ```

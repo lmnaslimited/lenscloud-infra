@@ -22,5 +22,6 @@ ensure_secret default twocx-admin-password password
 ensure_secret default shared-db-site-a-admin-password password
 ensure_secret default shared-db-site-b-admin-password password
 ensure_secret default wildcard-smoke-admin-password password
+ensure_secret default handoff-site-admin-password password
 
 echo "Smoke Secrets exist. Values were not printed."
