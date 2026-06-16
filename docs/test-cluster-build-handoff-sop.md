@@ -618,17 +618,21 @@ kubectl apply -f manifests/database/eu-shared-mariadb-template.yaml
 kubectl wait --for=condition=Ready mariadb/frappe-mariadb --timeout=15m
 ```
 
-Render and apply the approved Frappe v16 smoke:
+Render and apply the approved Frappe v16 Bench first:
 
 ```bash
 export HANDOFF_SITE_HOST=handoff.testcloud.lmnaslens.com
-export HANDOFF_MANIFEST=/tmp/lenscloud-handoff-bench-site.yaml
-envsubst < manifests/smoke/handoff-bench-site.template.yaml \
-  > "$HANDOFF_MANIFEST"
+export HANDOFF_BENCH_MANIFEST=/tmp/lenscloud-handoff-bench.yaml
+export HANDOFF_SITE_MANIFEST=/tmp/lenscloud-handoff-site.yaml
 
-kubectl apply -f "$HANDOFF_MANIFEST"
+cp manifests/smoke/handoff-bench.template.yaml "$HANDOFF_BENCH_MANIFEST"
+kubectl apply -f "$HANDOFF_BENCH_MANIFEST"
 kubectl wait --for=jsonpath='{.status.phase}'=Ready \
   frappebench/handoff-bench --timeout=20m
+
+envsubst < manifests/smoke/handoff-site.template.yaml \
+  > "$HANDOFF_SITE_MANIFEST"
+kubectl apply -f "$HANDOFF_SITE_MANIFEST"
 kubectl wait --for=jsonpath='{.status.phase}'=Ready \
   frappesite/handoff-site --timeout=20m
 ```
@@ -655,7 +659,7 @@ Site. Keep the Bench and MariaDB:
 ```bash
 kubectl delete frappesite handoff-site --wait=false
 kubectl wait --for=delete frappesite/handoff-site --timeout=10m
-kubectl apply -f "$HANDOFF_MANIFEST"
+kubectl apply -f "$HANDOFF_SITE_MANIFEST"
 kubectl wait --for=jsonpath='{.status.phase}'=Ready \
   frappesite/handoff-site --timeout=20m
 ```
@@ -677,6 +681,56 @@ asset_path="$(
 test -n "$asset_path"
 curl -fsSI "https://${HANDOFF_SITE_HOST}${asset_path}" | head
 ```
+
+Admin login:
+
+```bash
+kubectl get secret handoff-site-admin-password \
+  -o jsonpath='{.data.password}' |
+  base64 -d
+echo
+```
+
+Open:
+
+```text
+https://handoff.testcloud.lmnaslens.com
+```
+
+Use:
+
+```text
+Username: Administrator
+Password: value from handoff-site-admin-password
+```
+
+Bench shell for diagnostics:
+
+```bash
+gunicorn_pod="$(
+  kubectl get pod -o name |
+    sed -n 's#pod/\\(handoff-bench-gunicorn[^ ]*\\)#\\1#p' |
+    head -1
+)"
+test -n "$gunicorn_pod"
+
+kubectl exec -it "$gunicorn_pod" -- bash
+cd /home/frappe/frappe-bench
+bench --site handoff.testcloud.lmnaslens.com list-apps
+```
+
+Expected output includes at least:
+
+```text
+frappe
+erpnext
+```
+
+Do not use `bench drop-site` as the normal cleanup path while the
+`FrappeSite/handoff-site` custom resource exists. Dropping the site manually
+can make the operator deletion job fail with `IncorrectSitePath`, leaving the
+custom resource stuck on its finalizer. Use the `kubectl delete frappesite`
+cleanup in Stage 14.
 
 Expected:
 
@@ -763,7 +817,7 @@ kubectl delete secret \
   handoff-site-init-secrets \
   --ignore-not-found
 kubectl delete pvc handoff-bench-sites --ignore-not-found
-rm -f /tmp/lenscloud-handoff-bench-site.yaml
+rm -f /tmp/lenscloud-handoff-bench.yaml /tmp/lenscloud-handoff-site.yaml
 ```
 
 **Gate 14 tests**

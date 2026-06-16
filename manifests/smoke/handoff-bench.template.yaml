@@ -70,30 +70,3 @@ spec:
     mariadbRef:
       name: frappe-mariadb
       namespace: default
----
-apiVersion: vyogo.tech/v1
-kind: FrappeSite
-metadata:
-  name: handoff-site
-  namespace: default
-  labels:
-    lenscloud.io/test-purpose: cluster-handoff
-spec:
-  benchRef:
-    name: handoff-bench
-    namespace: default
-  siteName: ${HANDOFF_SITE_HOST}
-  domain: ${HANDOFF_SITE_HOST}
-  adminPasswordSecretRef:
-    name: handoff-site-admin-password
-  apps:
-    - erpnext
-  ingressClassName: traefik
-  ingress:
-    enabled: true
-    className: traefik
-    annotations:
-      traefik.ingress.kubernetes.io/router.entrypoints: websecure
-      traefik.ingress.kubernetes.io/router.tls: "true"
-  tls:
-    enabled: false
