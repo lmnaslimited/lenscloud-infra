@@ -560,6 +560,17 @@ export CONFIRM_TRAEFIK_CUTOVER=yes
 ./scripts/49-verify-edge-runtime.sh
 ```
 
+If an older checkout created `FrappeSite/wildcard-smoke` in Stage 11 and it is
+Pending, remove it before rerunning this step:
+
+```bash
+kubectl delete frappesite wildcard-smoke --ignore-not-found
+```
+
+Stage 11 validates wildcard DNS/TLS and Traefik routing only. The Frappe
+Operator Bench/Site acceptance happens in Stage 12 after the required Bench and
+MariaDB exist.
+
 **Gate 11 tests**
 
 ```bash
