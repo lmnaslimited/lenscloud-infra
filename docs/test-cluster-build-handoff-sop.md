@@ -295,12 +295,12 @@ export WORKER_PUBLIC_IP="$(
 export MANAGER_PRIVATE_IP="$(
   hcloud server describe "$MANAGER_NAME" -o json |
     jq -r --arg network "$NETWORK_NAME" \
-      '.private_net[] | select(.network.name == $network) | .ip'
+      '.private_net[] | .ip'
 )"
 export WORKER_PRIVATE_IP="$(
   hcloud server describe "$WORKER_NAME" -o json |
     jq -r --arg network "$NETWORK_NAME" \
-      '.private_net[] | select(.network.name == $network) | .ip'
+      '.private_net[] | .ip'
 )"
 ```
 
@@ -521,10 +521,56 @@ CERTBOT_IMAGE="$CERTBOT_IMAGE" \
 CERTBOT_EMAIL="$CERTBOT_EMAIL" \
 CERTBOT_DOMAIN="$CERTBOT_DOMAIN" \
   ./scripts/44-render-certbot-manifests.sh
+```
 
+```
 ./scripts/45-install-certbot-wildcard.sh
+```
+
+> **Note:** This step may take up to **30 minutes**.
+During certificate issuance, Certbot creates temporary DNS validation records and waits for them to become visible on the internet. Let's Encrypt must successfully verify these records before issuing the wildcard certificate.
+The total duration depends primarily on DNS propagation time and external validation processes.
+
+```
 ./scripts/46-test-certbot-renewal.sh
 ```
+
+>**Note:** This step may take up to **30 minutes**.
+The renewal dry-run performs the same DNS validation process as a real certificate renewal. Although no certificate is actually renewed, DNS challenge records must still be created and validated.
+
+### Handling Certificate Issuance Job Failures
+
+If the `certbot-wildcard-issue` job fails or the script times out while waiting for the job to complete, do **not** immediately rerun:
+
+```bash
+./scripts/45-install-certbot-wildcard.sh
+```
+
+Before rerunning the script, remove the failed job from the cluster.
+
+1.  List the jobs in the `lenscloud-edge` namespace:
+    
+
+```bash
+kubectl get jobs -n lenscloud-edge
+```
+
+2.  Identify the failed job (for example, `certbot-wildcard-issue`) and delete it:
+    
+
+```bash
+kubectl delete job <job-name> -n lenscloud-edge
+```
+
+3.  After the job has been deleted, rerun the certificate installation script:
+    
+
+```bash
+./scripts/45-install-certbot-wildcard.sh
+```
+
+This ensures that a fresh Kubernetes Job is created and prevents conflicts with the previously failed execution.
+  
 
 **Gate 10 tests**
 
@@ -709,7 +755,8 @@ Bench shell for diagnostics:
 ```bash
 gunicorn_pod="$(
   kubectl get pod -o name |
-    sed -n 's#pod/\\(handoff-bench-gunicorn[^ ]*\\)#\\1#p' |
+    grep '^pod/handoff-bench-gunicorn' |
+    cut -d/ -f2 |
     head -1
 )"
 test -n "$gunicorn_pod"
