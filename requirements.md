@@ -30,6 +30,8 @@ Provision and bootstrap the Kubernetes substrate that LensCloud Platform will ma
 
 ### Environment Separation
 - Support separate clusters or isolated runtime pools for Quality and Production.
+- Support multiple approved runtime namespaces inside a Cluster for
+  enterprise/customer-dedicated workloads.
 - Support separate runtime and database placement where needed.
 - Support region-specific cluster templates.
 - Support EU first and US later using the same cluster contract.
@@ -54,6 +56,17 @@ Provision and bootstrap the Kubernetes substrate that LensCloud Platform will ma
 - Enforce the Platform ownership label at admission for direct runtime deletes;
   require LensCloud to enforce document identity, customer/privacy, dependency,
   role, and confirmation policy.
+- Allow LensCloud Platform to discover approved Runtime Namespaces by label
+  without granting namespace mutation. Platform-approved namespaces must carry
+  `lenscloud.io/runtime-namespace=true` and
+  `lenscloud.io/managed-by=platform`.
+
+## Requirement Tracking Process
+
+`docs/infra-workitems.md` is the single backlog and status tracker for Infra.
+Every SOP, contract, evidence file, and Platform handoff prompt must be linked
+from a workitem there. New requirements should not be added as standalone docs
+without updating that backlog first.
 
 ## Non-Functional Requirements
 

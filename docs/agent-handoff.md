@@ -30,6 +30,9 @@ This repository is the bootstrap and substrate layer for LensCloud. It should re
 
 - This repo owns cluster bootstrap and handoff only.
 - Product behavior belongs in `lenscloud-platform`.
+- `docs/infra-workitems.md` is the single backlog and progress tracker. New
+  requirements, SOPs, contracts, evidence files, and Platform handoff prompts
+  must be linked from that backlog before they are treated as active work.
 - Database Server privacy, ownership, capacity policy, and Bench attachment belong in `lenscloud-platform`.
 - Read `docs/database-server-runtime-contract.md` before changing MariaDB smoke resources or platform handoff values.
 - Read `docs/wildcard-edge-contract.md` before changing ingress, DNS, TLS, or Site routing.

@@ -27,3 +27,10 @@ This repository owns the Hcloud and Kubernetes bootstrap layer for LensCloud.
 - [docs/infra-workitems.md](./docs/infra-workitems.md)
 - [docs/platform-runtime-lifecycle-handoff.md](./docs/platform-runtime-lifecycle-handoff.md)
 - [docs/platform-runtime-namespace-sop.md](./docs/platform-runtime-namespace-sop.md)
+
+## Backlog Discipline
+
+`docs/infra-workitems.md` is the single Infra backlog. Before adding a new SOP,
+contract, evidence file, script, or Platform handoff prompt, add or update the
+matching workitem there and link the supporting artifact. Do not let detailed
+docs become separate trackers.
