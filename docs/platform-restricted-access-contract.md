@@ -47,6 +47,14 @@ It must not grant:
 - Do not store kubeconfig content in a DocType field, action log, manifest
   preview, API response, frontend state, or browser storage.
 - Use `lenscloud-runtime-eu` as the controlled Phase 1 runtime namespace.
+- Additional enterprise or customer-dedicated runtime namespaces are approved
+  by Infra through namespace labels and namespace-scoped RBAC. The kubeconfig
+  context default namespace does not need to change.
+- Platform may discover approved runtime namespaces with read-only
+  `get/list/watch namespaces`. It must import only the Cluster default runtime
+  namespace or namespaces labelled
+  `lenscloud.io/runtime-namespace=true` and
+  `lenscloud.io/managed-by=platform`.
 - The existing shared MariaDB remains in `default`; the credential has
   read-only MariaDB access and no Secret access in `default`.
 - Refresh the Hcloud port 6443 source rule with
@@ -82,6 +90,7 @@ adds:
 - delete rights for labelled owned Jobs, PVCs, and Secrets
 - an admission guard requiring `lenscloud.io/managed-by=platform` for direct
   deletes by the Platform identity
+- read-only namespace discovery for approved Runtime Namespace sync
 - read-only access to the protected `default` MariaDB namespace
 - prohibited Node, CRD, namespace, operator, and unrelated Secret permissions
   were denied
@@ -93,3 +102,6 @@ and the protected-resource denylist before issuing an operation.
 
 The repeatable commands are in
 [platform-restricted-access-sop.md](./platform-restricted-access-sop.md).
+
+Additional runtime namespace onboarding is documented in
+[platform-runtime-namespace-sop.md](./platform-runtime-namespace-sop.md).

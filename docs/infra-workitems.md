@@ -14,6 +14,7 @@ This is the canonical tracker for LensCloud Infra. Product work is tracked in
 | Infra-to-Platform lifecycle handoff | Publish exact authority, limits, and next Platform work | Complete |
 | Private Shared/Private capacity | Confirm sequential acceptance headroom | Complete |
 | Fresh test-cluster SOP | New Hetzner project through Platform handoff with staged gates | Complete |
+| Additional runtime namespaces | Register enterprise/customer namespaces with labels and scoped Platform RBAC | Complete |
 | US region | Repeatable second regional cluster | Later |
 | Local Docker runtime | Standalone developer runtime | Later |
 

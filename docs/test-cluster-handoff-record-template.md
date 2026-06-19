@@ -30,6 +30,12 @@ content in this record.
 - Firewall:
 - Default StorageClass: `local-path`
 - Runtime namespace: `lenscloud-runtime-eu`
+- Additional approved Runtime Namespaces:
+  - name:
+  - labels:
+  - customer:
+  - purpose:
+  - verification result:
 
 ## Human Access
 
@@ -94,6 +100,9 @@ content in this record.
 - Port 6443 source `/32`:
 - Positive RBAC result:
 - Negative RBAC result:
+- Namespace list discovery:
+- Namespace mutation denial:
+- Approved Runtime Namespace verification:
 - Unlabelled deletion denial:
 - Protected MariaDB denial:
 - Platform Python API preflight:

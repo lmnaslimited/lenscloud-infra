@@ -779,6 +779,25 @@ PLATFORM_KUBECONFIG="$OUTPUT_PATH" \
   ./scripts/55-verify-platform-lifecycle.sh
 ```
 
+Optional enterprise/customer runtime namespace registration:
+
+```bash
+./scripts/56-register-platform-runtime-namespace.sh \
+  --namespace lenscloud-enterprise-acme \
+  --customer acme \
+  --purpose enterprise \
+  --region eu-test \
+  --cluster lenscloud-eu-test
+
+PLATFORM_KUBECONFIG="$OUTPUT_PATH" \
+  ./scripts/57-verify-platform-runtime-namespace.sh \
+    --namespace lenscloud-enterprise-acme
+```
+
+Do not edit the generated kubeconfig context to switch namespaces. The context
+may remain `lenscloud-runtime-eu`; additional namespace access is granted
+through RoleBindings.
+
 **Gate 13 tests**
 
 - Positive restricted checks pass.
@@ -786,6 +805,10 @@ PLATFORM_KUBECONFIG="$OUTPUT_PATH" \
 - `default/frappe-mariadb` is readable but cannot be patched or deleted.
 - Nodes, namespaces, CRDs, StorageClasses, operators, Traefik, and
   infrastructure Secrets remain protected.
+- Namespace list is allowed only for approved Runtime Namespace discovery;
+  namespace create/patch/delete remain denied.
+- Optional enterprise/customer runtime namespace verification passes when
+  registered.
 - Unlabelled runtime deletion is denied.
 - Managed lifecycle test resources are cleaned.
 - Port 6443 has exactly the approved Platform `/32`, never `0.0.0.0/0`.
@@ -853,6 +876,7 @@ Record:
 - wildcard certificate issuer, SANs, expiry, and renewal status;
 - shared MariaDB CR name/namespace and health;
 - restricted service-account name and runtime namespace;
+- approved Runtime Namespace labels and verification results;
 - positive/negative RBAC summary;
 - Bench/Site HTTPS and asset test results;
 - capacity snapshot and any warnings;
@@ -890,6 +914,7 @@ Provide these values:
 | Headlamp URL | `https://headlamp.testcloud.lmnaslens.com` |
 | Operator namespace | `frappe-operator-system` |
 | Runtime namespace | `lenscloud-runtime-eu` |
+| Additional runtime namespaces | optional approved namespaces and labels |
 | StorageClass | `local-path` |
 | Credential reference | `file:/run/secrets/lenscloud-eu-test.kubeconfig` |
 | Root domain | `testcloud.lmnaslens.com` |

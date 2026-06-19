@@ -77,6 +77,8 @@ Supporting SOPs:
 - [docs/platform-restricted-access-sop.md](./docs/platform-restricted-access-sop.md)
 - [docs/platform-live-orchestration-readiness.md](./docs/platform-live-orchestration-readiness.md)
 - [docs/platform-runtime-lifecycle-handoff.md](./docs/platform-runtime-lifecycle-handoff.md)
+- [docs/platform-runtime-namespace-sop.md](./docs/platform-runtime-namespace-sop.md)
+- [docs/platform-runtime-namespace-handoff.md](./docs/platform-runtime-namespace-handoff.md)
 - [docs/platform-runtime-lifecycle-evidence-20260608.md](./docs/platform-runtime-lifecycle-evidence-20260608.md)
 - [docs/platform-agent-runtime-lifecycle-prompt.md](./docs/platform-agent-runtime-lifecycle-prompt.md)
 - [docs/infra-workitems.md](./docs/infra-workitems.md)

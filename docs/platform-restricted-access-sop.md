@@ -38,11 +38,32 @@ The service account can:
 - read runtime Pods, Services, PVCs, Events, Jobs, and Ingresses;
 - get, create, update, and delete owned Site/admin or database bootstrap
   Secrets only in
-  `lenscloud-runtime-eu`.
+  `lenscloud-runtime-eu`;
+- discover approved Runtime Namespace records with read-only namespace
+  `get/list/watch`.
 
 It cannot mutate `default/frappe-mariadb`, Nodes, namespaces, CRDs, operators,
 system deployments, or infrastructure Secrets. Direct runtime deletes are
 rejected unless the resource has `lenscloud.io/managed-by=platform`.
+
+Additional customer or enterprise runtime namespaces are registered after the
+baseline access install:
+
+```bash
+./scripts/56-register-platform-runtime-namespace.sh \
+  --namespace lenscloud-enterprise-acme \
+  --customer acme \
+  --purpose enterprise \
+  --region eu-test \
+  --cluster lenscloud-eu-test
+
+./scripts/57-verify-platform-runtime-namespace.sh \
+  --namespace lenscloud-enterprise-acme \
+  --platform-kubeconfig .artifacts/lenscloud-eu-test.kubeconfig
+```
+
+The kubeconfig context default namespace may remain `lenscloud-runtime-eu`;
+access to additional runtime namespaces is granted by RoleBinding.
 
 ## Authorize The Platform Host
 
@@ -147,6 +168,12 @@ kubectl -n lenscloud-platform-system delete serviceaccount lenscloud-platform
 kubectl delete clusterrolebinding lenscloud-platform-access-reviewer
 kubectl delete rolebinding lenscloud-platform-existing-database -n default
 kubectl delete rolebinding lenscloud-platform-runtime -n lenscloud-runtime-eu
+for namespace in lenscloud-enterprise-acme lenscloud-customer-acme; do
+  kubectl delete rolebinding lenscloud-platform-runtime -n "$namespace" \
+    --ignore-not-found
+  kubectl delete role lenscloud-platform-runtime -n "$namespace" \
+    --ignore-not-found
+done
 kubectl delete validatingadmissionpolicybinding \
   lenscloud-platform-owned-delete
 kubectl delete validatingadmissionpolicy lenscloud-platform-owned-delete

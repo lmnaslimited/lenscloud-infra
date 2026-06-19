@@ -9,6 +9,8 @@ metadata:
   name: lenscloud-runtime-eu
   labels:
     lenscloud.io/region: eu
+    lenscloud.io/runtime-namespace: "true"
+    lenscloud.io/managed-by: platform
     lenscloud.io/managed-runtime: "true"
 ---
 apiVersion: v1
@@ -31,6 +33,14 @@ kind: ClusterRole
 metadata:
   name: lenscloud-platform-access-reviewer
 rules:
+  - apiGroups:
+      - ""
+    resources:
+      - namespaces
+    verbs:
+      - get
+      - list
+      - watch
   - apiGroups:
       - authorization.k8s.io
     resources:
