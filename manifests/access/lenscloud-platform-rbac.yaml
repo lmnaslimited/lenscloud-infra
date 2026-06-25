@@ -138,11 +138,21 @@ rules:
       - pods
       - services
       - persistentvolumeclaims
+      - configmaps
       - events
     verbs:
       - get
       - list
       - watch
+  - apiGroups:
+      - ""
+    resources:
+      - configmaps
+    verbs:
+      - create
+      - update
+      - patch
+      - delete
   - apiGroups:
       - ""
     resources:
@@ -154,6 +164,7 @@ rules:
     resources:
       - jobs
     verbs:
+      - create
       - get
       - list
       - watch
@@ -235,6 +246,7 @@ spec:
           - DELETE
         resources:
           - persistentvolumeclaims
+          - configmaps
           - secrets
         scope: Namespaced
   validations:
@@ -254,6 +266,75 @@ metadata:
   name: lenscloud-platform-owned-delete
 spec:
   policyName: lenscloud-platform-owned-delete
+  validationActions:
+    - Deny
+  matchResources:
+    namespaceSelector:
+      matchLabels:
+        lenscloud.io/managed-runtime: "true"
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicy
+metadata:
+  name: lenscloud-platform-bench-command-job-create
+spec:
+  failurePolicy: Fail
+  matchConstraints:
+    resourceRules:
+      - apiGroups:
+          - batch
+        apiVersions:
+          - "*"
+        operations:
+          - CREATE
+          - UPDATE
+        resources:
+          - jobs
+        scope: Namespaced
+  validations:
+    - expression: >-
+        request.userInfo.username !=
+        'system:serviceaccount:lenscloud-platform-system:lenscloud-platform'
+        || (has(object.metadata.labels)
+        && 'lenscloud.io/managed-by' in object.metadata.labels
+        && object.metadata.labels['lenscloud.io/managed-by'] == 'platform'
+        && 'lenscloud.io/resource-kind' in object.metadata.labels
+        && object.metadata.labels['lenscloud.io/resource-kind'] == 'bench-command'
+        && has(object.metadata.annotations)
+        && 'lenscloud.io/bench-command-family' in object.metadata.annotations
+        && object.metadata.annotations['lenscloud.io/bench-command-family'] in [
+          'backup',
+          'restore',
+          'maintenance_mode',
+          'developer_mode',
+          'site_config',
+          'cors',
+          'bench_test',
+          'latp'
+        ]
+        && object.spec.template.spec.restartPolicy == 'Never'
+        && object.spec.template.spec.containers.size() == 1
+        && (!has(object.spec.backoffLimit) || object.spec.backoffLimit <= 1)
+        && has(object.spec.template.spec.automountServiceAccountToken)
+        && object.spec.template.spec.automountServiceAccountToken == false
+        && (!has(object.spec.template.spec.volumes)
+          || object.spec.template.spec.volumes.all(volume, !has(volume.secret)))
+        && object.spec.template.spec.containers.all(container,
+          (!has(container.envFrom) || container.envFrom.size() == 0)
+          && (!has(container.securityContext)
+            || (!has(container.securityContext.privileged)
+              || container.securityContext.privileged == false))))
+      message: >-
+        LensCloud Platform may create only labelled bench-command Jobs with an
+        approved command family, one non-privileged container, no Secret volumes,
+        no envFrom, no service-account token, restartPolicy Never, and backoffLimit <= 1.
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicyBinding
+metadata:
+  name: lenscloud-platform-bench-command-job-create
+spec:
+  policyName: lenscloud-platform-bench-command-job-create
   validationActions:
     - Deny
   matchResources:

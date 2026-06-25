@@ -155,11 +155,21 @@ rules:
       - pods
       - services
       - persistentvolumeclaims
+      - configmaps
       - events
     verbs:
       - get
       - list
       - watch
+  - apiGroups:
+      - ""
+    resources:
+      - configmaps
+    verbs:
+      - create
+      - update
+      - patch
+      - delete
   - apiGroups:
       - ""
     resources:
@@ -171,6 +181,7 @@ rules:
     resources:
       - jobs
     verbs:
+      - create
       - get
       - list
       - watch

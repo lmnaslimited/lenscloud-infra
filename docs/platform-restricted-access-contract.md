@@ -20,6 +20,8 @@ minimum permissions required to:
 - get, list, watch, create, patch, update, and delete FrappeBench and
   FrappeSite in the controlled runtime namespace
 - get, list, and watch related Pods, Services, PVCs, Events, Jobs, and Ingresses
+- create, read, and delete approved Bench Command Jobs and request ConfigMaps in
+  the controlled runtime namespace for Site Control enforcement
 - create, update, and delete only runtime Secrets that the approved
   provisioning workflow owns
 - delete labelled owned Jobs and PVCs when operator cleanup requires it
@@ -32,6 +34,8 @@ It must not grant:
 - CRD mutation
 - operator installation or namespace administration
 - unrestricted Secret listing across the cluster
+- pod log access for Bench Command Jobs; command results must be sanitized
+  status/termination summaries
 - access to infrastructure-only GoDaddy, Certbot, or wildcard TLS private-key
   Secrets
 
@@ -87,6 +91,7 @@ adds:
 - kubeconfig stored outside Git and mounted read-only in the Platform
   devcontainer
 - runtime delete rights for MariaDB, FrappeBench, and FrappeSite
+- Bench Command Job/API rights for approved Site Control command requests
 - delete rights for labelled owned Jobs, PVCs, and Secrets
 - an admission guard requiring `lenscloud.io/managed-by=platform` for direct
   deletes by the Platform identity

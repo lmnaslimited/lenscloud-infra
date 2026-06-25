@@ -27,6 +27,7 @@ This repository owns the Hcloud and Kubernetes bootstrap layer for LensCloud.
 - [docs/infra-workitems.md](./docs/infra-workitems.md)
 - [docs/platform-runtime-lifecycle-handoff.md](./docs/platform-runtime-lifecycle-handoff.md)
 - [docs/platform-runtime-namespace-sop.md](./docs/platform-runtime-namespace-sop.md)
+- [docs/platform-bench-command-handoff.md](./docs/platform-bench-command-handoff.md)
 
 ## Backlog Discipline
 

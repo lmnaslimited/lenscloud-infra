@@ -60,6 +60,10 @@ Provision and bootstrap the Kubernetes substrate that LensCloud Platform will ma
   without granting namespace mutation. Platform-approved namespaces must carry
   `lenscloud.io/runtime-namespace=true` and
   `lenscloud.io/managed-by=platform`.
+- Provide a secret-safe Bench Command Job/API contract for Platform-approved
+  Site Control runtime enforcement. The contract must stay namespace-scoped,
+  use an allowlist, validate typed arguments and target Bench/Site identity,
+  sanitize status/results, and avoid invented FrappeSite CRD fields.
 
 ## Requirement Tracking Process
 

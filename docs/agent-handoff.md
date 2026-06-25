@@ -42,6 +42,8 @@ This repository is the bootstrap and substrate layer for LensCloud. It should re
   CRUD/delete permissions or Platform ownership boundaries.
 - Read `docs/platform-runtime-namespace-sop.md` before approving additional
   Platform runtime namespaces or changing namespace discovery labels/RBAC.
+- Read `docs/platform-bench-command-handoff.md` before changing Bench Command
+  Job/API permissions, admission guardrails, or Site Control runtime handoff.
 - Track active Infra milestones in `docs/infra-workitems.md`.
 - Use `docs/test-cluster-build-handoff-sop.md` and its handoff record template
   for fresh project/cluster acceptance; do not reconstruct the process from
