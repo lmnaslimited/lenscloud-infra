@@ -57,8 +57,9 @@ The current Infra-to-Platform handoff is:
 | INF-006 | Private Shared / Private capacity | [database-server-runtime-contract.md](./database-server-runtime-contract.md) | [test-cluster-build-handoff-sop.md](./test-cluster-build-handoff-sop.md) | capacity section in handoff record | [database-server-runtime-contract.md](./database-server-runtime-contract.md) | Complete |
 | INF-007 | Fresh test-cluster SOP | [requirements.md](../requirements.md) | [test-cluster-build-handoff-sop.md](./test-cluster-build-handoff-sop.md) | [test-cluster-handoff-record-template.md](./test-cluster-handoff-record-template.md) | Stage 15 in [test-cluster-build-handoff-sop.md](./test-cluster-build-handoff-sop.md) | Complete |
 | INF-008 | Additional Platform runtime namespaces | Platform requirement for enterprise/customer namespaces | [platform-runtime-namespace-sop.md](./platform-runtime-namespace-sop.md), `scripts/56-register-platform-runtime-namespace.sh` | `scripts/57-verify-platform-runtime-namespace.sh`, `scripts/54-verify-platform-access.sh` with `RUNTIME_NAMESPACE` | [platform-runtime-namespace-handoff.md](./platform-runtime-namespace-handoff.md) | Complete |
-| INF-009 | US region | regional expansion requirement | TBD | TBD | TBD | Later |
-| INF-010 | Local Docker runtime | [local-docker-runtime.md](./local-docker-runtime.md) | TBD | TBD | TBD | Later |
+| INF-009 | Legacy namespace inventory | Platform cleanup follow-up from `cleanup-evidence-20260625.md` | admin kubeconfig read-only inventory of `bench-lenscx-eu-public` | [legacy-namespace-inventory-20260625.md](./legacy-namespace-inventory-20260625.md) | no Platform mutation; proposed cleanup commands only for old `default` smoke resources | Complete |
+| INF-010 | US region | regional expansion requirement | TBD | TBD | TBD | Later |
+| INF-011 | Local Docker runtime | [local-docker-runtime.md](./local-docker-runtime.md) | TBD | TBD | TBD | Later |
 
 ## Protected Baseline
 
