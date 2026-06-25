@@ -46,6 +46,9 @@ The Phase 1 verification proves:
 - Secret listing, pod logs, default namespace mutation, and unapproved namespace
   mutation remain denied.
 
+Platform may now run live `bench_test.status` smoke through this Job/ConfigMap
+contract in `lenscloud-runtime-eu`.
+
 Production backup/restore and control mutations still require a production
 bench-command runner image or operator API implementation. Until that runner is
 published, Platform can integrate the API shape and must show unsupported
@@ -229,12 +232,13 @@ In approved runtime namespaces, Platform can:
 
 - create/get/list/watch/delete Jobs;
 - create/get/list/watch/update/patch/delete ConfigMaps;
-- get/list/watch Pods, Services, PVCs, Events, and Ingresses.
+- list/watch Pods for status inspection;
+- get/list/watch Services, PVCs, Events, and Ingresses.
 
 Platform cannot:
 
 - list Secrets;
-- read pod logs;
+- get individual Pods or read pod logs;
 - create Jobs or ConfigMaps in `default`;
 - mutate `default/frappe-mariadb`;
 - mutate namespaces, CRDs, Nodes, operators, Traefik, TLS, or storage classes;
@@ -339,7 +343,7 @@ scripts/58-verify-platform-bench-command.sh
 Script number `56` is already used by Runtime Namespace registration, so the
 Bench Command verifier uses `58`.
 
-Expected summary:
+Live verification passed on 2026-06-25. Expected/current summary:
 
 ```text
 Bench Command Job/API RBAC verification passed.
@@ -348,8 +352,14 @@ Positive command family: bench_test
 Sanitized result summary: present
 Negative unlabelled Job: denied
 Negative Secret volume Job: denied
-Secret listing and pod logs: denied
+Secret listing and pod log read: denied
 Unapproved namespace and default namespace creation: denied
+```
+
+Canonical evidence:
+
+```text
+docs/bench-command-job-evidence-20260625.md
 ```
 
 ## Platform Agent Prompt

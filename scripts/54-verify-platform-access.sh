@@ -51,7 +51,7 @@ denied=(
   "get secrets traefik"
   "delete secrets default"
   "delete secrets traefik"
-  "list pods/log ${RUNTIME_NAMESPACE}"
+  "get pods/log ${RUNTIME_NAMESPACE}"
   "delete frappebenches.vyogo.tech default"
   "delete frappesites.vyogo.tech default"
   "list secrets ${RUNTIME_NAMESPACE}"

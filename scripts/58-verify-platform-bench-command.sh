@@ -60,11 +60,12 @@ expect_yes get jobs.batch "$RUNTIME_NAMESPACE"
 expect_yes list pods "$RUNTIME_NAMESPACE"
 
 expect_no list secrets "$RUNTIME_NAMESPACE"
+expect_no get pods "$RUNTIME_NAMESPACE"
 expect_no get secrets default
 expect_no create jobs.batch default
 expect_no create configmaps default
 expect_no create jobs.batch "$UNAPPROVED_NAMESPACE"
-expect_no list pods/log "$RUNTIME_NAMESPACE"
+expect_no get pods/log "$RUNTIME_NAMESPACE"
 expect_no patch namespaces _cluster
 
 "${platform[@]}" -n "$RUNTIME_NAMESPACE" create configmap "$TEST_PREFIX-request" \
@@ -119,12 +120,9 @@ EOF
 "${platform[@]}" -n "$RUNTIME_NAMESPACE" wait \
   --for=condition=complete "job/${TEST_PREFIX}-positive" --timeout=120s
 
-pod_name="$("${platform[@]}" -n "$RUNTIME_NAMESPACE" get pod \
+termination_message="$("${platform[@]}" -n "$RUNTIME_NAMESPACE" get pods \
   -l "job-name=${TEST_PREFIX}-positive" \
-  -o jsonpath='{.items[0].metadata.name}')"
-
-termination_message="$("${platform[@]}" -n "$RUNTIME_NAMESPACE" get pod "$pod_name" \
-  -o jsonpath='{.status.containerStatuses[0].state.terminated.message}')"
+  -o jsonpath='{.items[0].status.containerStatuses[0].state.terminated.message}')"
 
 if [[ "$termination_message" != *'"sanitized":true'* ]]; then
   echo "Sanitized termination summary was not found." >&2
@@ -201,5 +199,5 @@ echo "Positive command family: bench_test"
 echo "Sanitized result summary: present"
 echo "Negative unlabelled Job: denied"
 echo "Negative Secret volume Job: denied"
-echo "Secret listing and pod logs: denied"
+echo "Secret listing and pod log read: denied"
 echo "Unapproved namespace and default namespace creation: denied"

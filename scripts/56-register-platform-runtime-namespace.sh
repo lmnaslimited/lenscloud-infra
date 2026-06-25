@@ -152,13 +152,19 @@ rules:
   - apiGroups:
       - ""
     resources:
-      - pods
       - services
       - persistentvolumeclaims
       - configmaps
       - events
     verbs:
       - get
+      - list
+      - watch
+  - apiGroups:
+      - ""
+    resources:
+      - pods
+    verbs:
       - list
       - watch
   - apiGroups:

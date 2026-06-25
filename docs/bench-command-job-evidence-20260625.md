@@ -126,23 +126,35 @@ yaml ok
 
 ## Live Verification Status
 
-Live apply and verification were attempted through the normal manager path, but
-the execution approval guard blocked the change because it broadens the
-Platform service-account authority on live infrastructure.
+Live verification completed on 2026-06-25 against runtime namespace:
 
-No workaround was attempted.
+```text
+lenscloud-runtime-eu
+```
 
-No live RBAC, admission policy, Job, Pod, ConfigMap, Secret, PVC, namespace, or
-operator resource was changed by this pass.
+RBAC/admission apply summary:
 
-## Verification Command To Run After Approval
+```text
+role.rbac.authorization.k8s.io/lenscloud-platform-runtime configured
+validatingadmissionpolicy.admissionregistration.k8s.io/lenscloud-platform-bench-command-job-create created
+validatingadmissionpolicybinding.admissionregistration.k8s.io/lenscloud-platform-bench-command-job-create created
+```
 
-From the live manager or approved Infra admin path:
+The standard Platform access verifier passed:
+
+```text
+mariadb.k8s.mariadb.com/frappe-mariadb
+true platform
+No resources found in lenscloud-runtime-eu namespace.
+Restricted LensCloud Platform RBAC verification passed for lenscloud-runtime-eu.
+```
+
+## Verification Commands Run
+
+From the live manager:
 
 ```bash
 cd /root/lenscloud-infra
-git pull --ff-only
-
 kubectl apply -f manifests/access/lenscloud-platform-rbac.yaml
 
 PLATFORM_KUBECONFIG=.artifacts/lenscloud-eu.kubeconfig \
@@ -154,30 +166,45 @@ RUNTIME_NAMESPACE=lenscloud-runtime-eu \
 ./scripts/58-verify-platform-bench-command.sh
 ```
 
-Expected summary:
+Bench Command verifier output summary:
 
 ```text
+configmap/run-20260625-1335-bench-command-request created
+job.batch/run-20260625-1335-bench-command-positive created
+job.batch/run-20260625-1335-bench-command-positive condition met
+job.batch "run-20260625-1335-bench-command-positive" deleted from lenscloud-runtime-eu namespace
+configmap "run-20260625-1335-bench-command-request" deleted from lenscloud-runtime-eu namespace
 Bench Command Job/API RBAC verification passed.
 Runtime namespace: lenscloud-runtime-eu
 Positive command family: bench_test
 Sanitized result summary: present
 Negative unlabelled Job: denied
 Negative Secret volume Job: denied
-Secret listing and pod logs: denied
+Secret listing and pod log read: denied
 Unapproved namespace and default namespace creation: denied
 ```
 
 ## Cleanup Proof
 
-No live temporary resources were created in this pass because the live apply was
-blocked before verification.
+Temporary resources used by the verifier:
 
-The verification script uses a `run-YYYYMMDD-HHMM-bench-command` prefix and
-registers a cleanup trap for:
+```text
+ConfigMap/lenscloud-runtime-eu/run-20260625-1335-bench-command-request
+Job/lenscloud-runtime-eu/run-20260625-1335-bench-command-positive
+```
 
-- test Jobs;
-- test request ConfigMap;
-- unowned negative-test ConfigMap.
+Cleanup verification:
+
+```bash
+kubectl -n lenscloud-runtime-eu get job,configmap,pod --ignore-not-found |
+  grep run-20260625-1335-bench-command || true
+```
+
+Result:
+
+```text
+no matching run-20260625-1335-bench-command resources remained
+```
 
 It does not delete:
 
@@ -189,26 +216,43 @@ namespaces
 Traefik/TLS/Certbot resources
 ```
 
-## RBAC Proof Pending Live Run
+Protected baseline verification:
 
-The verifier is designed to prove:
+```text
+MariaDB/default/frappe-mariadb Ready / Running
+ValidatingAdmissionPolicy/lenscloud-platform-bench-command-job-create present
+ValidatingAdmissionPolicyBinding/lenscloud-platform-bench-command-job-create present
+```
+
+## RBAC Proof
+
+The verifier proved:
 
 Positive:
 
 - create/get/delete ConfigMaps in approved runtime namespace;
 - create/get/list/watch/delete Jobs in approved runtime namespace;
-- read Pod status for sanitized termination summary.
+- list Pod status for sanitized termination summary.
 
 Negative:
 
 - no Secret listing;
-- no pod log access;
+- no pod log read access;
 - no Job/ConfigMap creation in `default`;
 - no Job creation in unapproved namespaces;
 - no namespace mutation;
 - admission rejects unlabelled Jobs;
 - admission rejects Secret-volume Jobs;
 - admission rejects unsafe Job shapes.
+
+Direct negative RBAC checks after verification:
+
+```text
+get pods/log in lenscloud-runtime-eu: no
+list secrets in lenscloud-runtime-eu: no
+create jobs.batch in default: no
+create configmaps in default: no
+```
 
 ## Remaining Production Gaps
 
