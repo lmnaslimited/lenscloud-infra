@@ -59,8 +59,10 @@ The current Infra-to-Platform handoff is:
 | INF-008 | Additional Platform runtime namespaces | Platform requirement for enterprise/customer namespaces | [platform-runtime-namespace-sop.md](./platform-runtime-namespace-sop.md), `scripts/56-register-platform-runtime-namespace.sh` | `scripts/57-verify-platform-runtime-namespace.sh`, `scripts/54-verify-platform-access.sh` with `RUNTIME_NAMESPACE` | [platform-runtime-namespace-handoff.md](./platform-runtime-namespace-handoff.md) | Complete |
 | INF-009 | Legacy namespace inventory | Platform cleanup follow-up from `cleanup-evidence-20260625.md` | admin kubeconfig read-only inventory of `bench-lenscx-eu-public` | [legacy-namespace-inventory-20260625.md](./legacy-namespace-inventory-20260625.md) | no Platform mutation; proposed cleanup commands only for old `default` smoke resources | Complete |
 | INF-010 | Bench Command Job/API for Site Controls | Platform Site Control Profile runtime enforcement requirement | [platform-bench-command-handoff.md](./platform-bench-command-handoff.md), `scripts/58-verify-platform-bench-command.sh` | [bench-command-job-evidence-20260625.md](./bench-command-job-evidence-20260625.md) | Platform may run live `bench_test.status`; other families remain runner-pending | Complete |
-| INF-011 | US region | regional expansion requirement | TBD | TBD | TBD | Later |
-| INF-012 | Local Docker runtime | [local-docker-runtime.md](./local-docker-runtime.md) | TBD | TBD | TBD | Later |
+| INF-011 | Bench Command production runner/API | Platform handoff `infra-handoff-bench-command-production-runner-20260627.md` | [platform-bench-command-handoff.md](./platform-bench-command-handoff.md), `bench-command-runner/`, `scripts/59-test-bench-command-runner-local.sh` | [bench-command-production-runner-evidence-20260627.md](./bench-command-production-runner-evidence-20260627.md) | source implemented; Platform enablement waits for published image/live proof | In Progress |
+| INF-012 | Documentation governance agent | Traceable CMMI-style documentation control requirement | [documentation-governance-agent.md](./documentation-governance-agent.md) | backlog/document link audit | applies to all future Infra handoffs | Complete |
+| INF-013 | US region | regional expansion requirement | TBD | TBD | TBD | Later |
+| INF-014 | Local Docker runtime | [local-docker-runtime.md](./local-docker-runtime.md) | TBD | TBD | TBD | Later |
 
 ## Protected Baseline
 

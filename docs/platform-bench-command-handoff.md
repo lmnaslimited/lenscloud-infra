@@ -46,13 +46,18 @@ The Phase 1 verification proves:
 - Secret listing, pod logs, default namespace mutation, and unapproved namespace
   mutation remain denied.
 
-Platform may now run live `bench_test.status` smoke through this Job/ConfigMap
+Platform may run live `bench_test.status` smoke through this Job/ConfigMap
 contract in `lenscloud-runtime-eu`.
 
-Production backup/restore and control mutations still require a production
-bench-command runner image or operator API implementation. Until that runner is
-published, Platform can integrate the API shape and must show unsupported
-runtime commands truthfully.
+Infra has added production runner source for safe Site Control operations in:
+
+```text
+bench-command-runner/
+```
+
+The runner image is not yet published or live-verified. Platform must keep the
+newly implemented runner commands disabled or marked pending until Infra
+publishes a pinned image digest and completes live proof.
 
 ## Runtime Namespace Scope
 
@@ -215,11 +220,11 @@ Platform should normalize Job state to:
 | --- | --- | --- | --- |
 | `backup` | `backup.create`, `backup.status` | Contracted, runner pending | Must return backup metadata only, not file contents or passwords |
 | `restore` | `restore.preview`, `restore.execute`, `restore.status` | Unsupported until restore runbook is finalized | Must require explicit destructive confirmation and backup identity |
-| `maintenance_mode` | `maintenance_mode.enable`, `maintenance_mode.disable`, `maintenance_mode.status` | Contracted, runner pending | Maps to approved `bench --site` or site config workflow |
-| `developer_mode` | `developer_mode.enable`, `developer_mode.disable`, `developer_mode.status` | Contracted, runner pending | Prod policy should normally reject enable |
-| `site_config` | `site_config.set`, `site_config.unset`, `site_config.get` | Contracted for approved keys only, runner pending | Platform must validate key allowlist and value type |
-| `cors` | `cors.allowlist.update`, `cors.allowlist.get` | Contracted where supported, runner pending | Must normalize hostnames/origins and reject wildcards unless policy allows |
-| `bench_test` | `bench_test.trigger`, `bench_test.status` | Verification stub available; production runner pending | Phase 1 positive proof uses harmless `bench_test.status` contract check |
+| `maintenance_mode` | `maintenance_mode.enable`, `maintenance_mode.disable`, `maintenance_mode.status` | Runner source implemented; image/live proof pending | Uses approved site config key `maintenance_mode` |
+| `developer_mode` | `developer_mode.enable`, `developer_mode.disable`, `developer_mode.status` | Runner source implemented; image/live proof pending | Prod policy should normally reject enable |
+| `site_config` | `site_config.set`, `site_config.unset`, `site_config.get` | Runner source implemented for approved keys; image/live proof pending | Platform must validate key allowlist and value type |
+| `cors` | `cors.allowlist.update`, `cors.allowlist.get` | Runner source implemented; image/live proof pending | Wildcard origin rejected by runner |
+| `bench_test` | `bench_test.trigger`, `bench_test.status` | Platform smoke available for `bench_test.status`; production suite runner pending | Phase 1 positive proof uses harmless `bench_test.status` contract check |
 | `latp` | `latp.trigger`, `latp.status` | Contracted, runner pending | Production LATP must be non-destructive |
 
 Known unsupported commands must return `Unsupported` with
@@ -360,6 +365,7 @@ Canonical evidence:
 
 ```text
 docs/bench-command-job-evidence-20260625.md
+docs/bench-command-production-runner-evidence-20260627.md
 ```
 
 ## Platform Agent Prompt
@@ -394,10 +400,15 @@ Platform responsibilities:
    pod logs, or full env dumps.
 10. Clean command Jobs and ConfigMaps after terminal state and evidence capture.
 
-Start with `bench_test.status` as the positive contract path. Treat backup,
-restore, maintenance mode, developer mode, site_config, CORS, Bench Test
-trigger, and LATP trigger as contracted command families, but only mark runtime
-enforcement complete when the runner/API supports the specific command.
+Start with `bench_test.status` as the live positive contract path.
+
+Infra runner source now implements maintenance mode, developer mode, approved
+site_config keys, and CORS allowlist locally, but these controls must remain
+pending in Platform UI/policy enforcement until Infra publishes a pinned runner
+image and completes live image verification.
+
+Backup, restore, Bench Test trigger, and LATP remain runner-pending or
+unsupported as documented.
 
 Return:
 - Platform files changed;

@@ -25,6 +25,7 @@ This repository owns the Hcloud and Kubernetes bootstrap layer for LensCloud.
 - [requirements.md](./requirements.md)
 - [docs/agent-handoff.md](./docs/agent-handoff.md)
 - [docs/infra-workitems.md](./docs/infra-workitems.md)
+- [docs/documentation-governance-agent.md](./docs/documentation-governance-agent.md)
 - [docs/platform-runtime-lifecycle-handoff.md](./docs/platform-runtime-lifecycle-handoff.md)
 - [docs/platform-runtime-namespace-sop.md](./docs/platform-runtime-namespace-sop.md)
 - [docs/platform-bench-command-handoff.md](./docs/platform-bench-command-handoff.md)
@@ -35,3 +36,6 @@ This repository owns the Hcloud and Kubernetes bootstrap layer for LensCloud.
 contract, evidence file, script, or Platform handoff prompt, add or update the
 matching workitem there and link the supporting artifact. Do not let detailed
 docs become separate trackers.
+
+Follow [docs/documentation-governance-agent.md](./docs/documentation-governance-agent.md)
+for intake, completion, evidence, and handoff discipline.
