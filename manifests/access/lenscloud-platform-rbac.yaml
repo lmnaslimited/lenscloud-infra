@@ -326,14 +326,25 @@ spec:
         && (!has(object.spec.template.spec.volumes)
           || object.spec.template.spec.volumes.all(volume, !has(volume.secret)))
         && object.spec.template.spec.containers.all(container,
+          (
+            container.image == 'ghcr.io/lmnaslimited/lenscloud-bench-command-runner@sha256:c3e0922ca034c840ebd06c29b52794fec54c655b62444df60393f2ed5501d920'
+            || (
+              object.metadata.annotations['lenscloud.io/bench-command-family'] == 'bench_test'
+              && 'lenscloud.io/bench-command' in object.metadata.annotations
+              && object.metadata.annotations['lenscloud.io/bench-command'] == 'bench_test.status'
+              && container.image == 'busybox:1.36'
+            )
+          )
+          &&
           (!has(container.envFrom) || container.envFrom.size() == 0)
           && (!has(container.securityContext)
             || (!has(container.securityContext.privileged)
               || container.securityContext.privileged == false))))
       message: >-
         LensCloud Platform may create only labelled bench-command Jobs with an
-        approved command family, one non-privileged container, no Secret volumes,
-        no envFrom, no service-account token, restartPolicy Never, and backoffLimit <= 1.
+        approved command family, approved runner image, one non-privileged
+        container, no Secret volumes, no envFrom, no service-account token,
+        restartPolicy Never, and backoffLimit <= 1.
 ---
 apiVersion: admissionregistration.k8s.io/v1
 kind: ValidatingAdmissionPolicyBinding

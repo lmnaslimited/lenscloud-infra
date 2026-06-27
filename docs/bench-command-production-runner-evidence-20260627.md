@@ -124,31 +124,102 @@ Secret-redaction proof:
 
 ## Image And Live Verification Status
 
-The runner source and Dockerfile are ready, but a production image has not yet
-been built, pushed, pinned by digest, applied to admission policy, or live-tested
-inside the cluster.
+The runner source and Dockerfile are ready. The production image has been built,
+pushed, pinned by digest, and added to the live admission policy.
 
-Build example:
+Image:
 
-```bash
-docker build \
-  -t ghcr.io/lmnaslimited/lenscloud-bench-command-runner:v0.1.0 \
-  bench-command-runner
+```text
+ghcr.io/lmnaslimited/lenscloud-bench-command-runner:v0.1.0
+ghcr.io/lmnaslimited/lenscloud-bench-command-runner@sha256:c3e0922ca034c840ebd06c29b52794fec54c655b62444df60393f2ed5501d920
+```
+
+Build and push summary:
+
+```text
+docker build --platform linux/amd64: passed
+docker push: passed
+published digest: sha256:c3e0922ca034c840ebd06c29b52794fec54c655b62444df60393f2ed5501d920
+```
+
+Container smoke summary:
+
+```text
+command: maintenance_mode.enable
+docker_status: 0
+phase: Succeeded
+changed: true
+redaction_check: pass
+```
+
+The smoke fixture contained a fake `db_password` value. The termination summary
+did not contain the fake password value or the `db_password` key.
+
+Live admission update:
+
+```text
+manifest: manifests/access/lenscloud-platform-rbac.yaml
+policy: lenscloud-platform-bench-command-job-create
+status: live-applied
+approved production image: runner digest above
+temporary verification exception: busybox:1.36 for bench_test.status only
+```
+
+Standard RBAC/Job API verification after the admission update:
+
+```text
+Restricted LensCloud Platform RBAC verification passed for lenscloud-runtime-eu.
+Bench Command Job/API RBAC verification passed.
+Runtime namespace: lenscloud-runtime-eu
+Positive command family: bench_test
+Sanitized result summary: present
+Negative unlabelled Job: denied
+Negative Secret volume Job: denied
+Secret listing and pod log read: denied
+Unapproved namespace and default namespace creation: denied
+```
+
+Production runner positive live proof:
+
+```text
+script: scripts/60-verify-bench-command-production-runner.sh
+command: maintenance_mode.enable
+status: blocked
+reason: worker cannot pull new GHCR package anonymously
+observed pod state: ImagePullBackOff
+observed pull error: 401 Unauthorized from ghcr.io token endpoint
+```
+
+Admission negative proof:
+
+```text
+attempt: maintenance_mode.enable with busybox:1.36
+result: denied
+reason: policy requires the approved runner image for non-verification commands
+```
+
+Cleanup proof:
+
+```text
+temporary prefix: run-20260627-1536-bench-runner
+temporary Job: removed
+temporary Pod: removed
+temporary ConfigMaps: removed
+post-cleanup grep in lenscloud-runtime-eu: no matching resources
 ```
 
 Before enabling Platform UI controls beyond current `bench_test.status`, Infra
-must:
+must do one of the following and rerun
+`scripts/60-verify-bench-command-production-runner.sh` successfully:
 
-1. build and publish the runner image;
-2. pin the digest in the Platform/Infra handoff;
-3. update admission policy to allow only the approved runner image;
-4. run live proof against a temporary test Site/Bench;
-5. capture cleanup proof for every temporary Job, ConfigMap, Bench, Site, and
-   PVC if created.
+1. make the GHCR package publicly pullable by the cluster; or
+2. install an infra-owned image pull secret for the runtime namespaces and keep
+   the Secret value out of Platform, logs, Git, and handoff documents.
 
 ## Protected Baseline
 
-No live cluster mutation was performed by this production runner source pass.
+No protected baseline resource was changed by this production runner pass.
+Admission was updated live, and temporary verifier resources were cleaned.
 
 The protected baseline remains:
 
@@ -162,9 +233,9 @@ infrastructure Secrets and private keys
 
 ## Remaining Production Gaps
 
-- Runner image publication and digest pinning.
-- Live command proof for implemented commands.
-- Admission policy image allowlist update after digest is available.
+- GHCR pull access for the new runner package.
+- Live positive command proof for implemented commands after pull access is
+  resolved.
 - Backup storage/metadata contract.
 - Restore signed runbook and destructive confirmation.
 - Bench Test and LATP production runner contracts.

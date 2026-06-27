@@ -30,20 +30,19 @@ Blocked -> Later
 
 ## Active Gate
 
-Platform may resume Runtime Namespace sync and lifecycle work after pulling
-Infra revision `f17c8d1` or newer.
+Infra is completing the Bench Command production runner image and live
+verification gate for `INF-011`.
 
-The current Infra-to-Platform handoff is:
+The current Infra-to-Platform Bench Command state is:
 
-- default runtime namespace: `lenscloud-runtime-eu`
-- additional runtime namespace support: Ready
-- namespace discovery: allowed with read-only `get/list/watch namespaces`
-- namespace mutation: denied
-- Platform sync labels:
-  - `lenscloud.io/runtime-namespace=true`
-  - `lenscloud.io/managed-by=platform`
-- supporting handoff:
-  [platform-runtime-namespace-handoff.md](./platform-runtime-namespace-handoff.md)
+- `INF-010` Job/ConfigMap contract: Complete
+- `bench_test.status` smoke: available to Platform
+- production runner source: implemented
+- runner image publish/digest pin: complete
+- admission image pin: live-applied
+- live positive proof: blocked by GHCR anonymous pull authorization for the new
+  runner package
+- supporting handoff: [platform-bench-command-handoff.md](./platform-bench-command-handoff.md)
 
 ## Backlog
 
@@ -59,7 +58,7 @@ The current Infra-to-Platform handoff is:
 | INF-008 | Additional Platform runtime namespaces | Platform requirement for enterprise/customer namespaces | [platform-runtime-namespace-sop.md](./platform-runtime-namespace-sop.md), `scripts/56-register-platform-runtime-namespace.sh` | `scripts/57-verify-platform-runtime-namespace.sh`, `scripts/54-verify-platform-access.sh` with `RUNTIME_NAMESPACE` | [platform-runtime-namespace-handoff.md](./platform-runtime-namespace-handoff.md) | Complete |
 | INF-009 | Legacy namespace inventory | Platform cleanup follow-up from `cleanup-evidence-20260625.md` | admin kubeconfig read-only inventory of `bench-lenscx-eu-public` | [legacy-namespace-inventory-20260625.md](./legacy-namespace-inventory-20260625.md) | no Platform mutation; proposed cleanup commands only for old `default` smoke resources | Complete |
 | INF-010 | Bench Command Job/API for Site Controls | Platform Site Control Profile runtime enforcement requirement | [platform-bench-command-handoff.md](./platform-bench-command-handoff.md), `scripts/58-verify-platform-bench-command.sh` | [bench-command-job-evidence-20260625.md](./bench-command-job-evidence-20260625.md) | Platform may run live `bench_test.status`; other families remain runner-pending | Complete |
-| INF-011 | Bench Command production runner/API | Platform handoff `infra-handoff-bench-command-production-runner-20260627.md` | [platform-bench-command-handoff.md](./platform-bench-command-handoff.md), `bench-command-runner/`, `scripts/59-test-bench-command-runner-local.sh` | [bench-command-production-runner-evidence-20260627.md](./bench-command-production-runner-evidence-20260627.md) | source implemented; Platform enablement waits for published image/live proof | In Progress |
+| INF-011 | Bench Command production runner/API | Platform handoff `infra-handoff-bench-command-production-runner-20260627.md` | [platform-bench-command-handoff.md](./platform-bench-command-handoff.md), `bench-command-runner/`, `scripts/59-test-bench-command-runner-local.sh`, `scripts/60-verify-bench-command-production-runner.sh` | [bench-command-production-runner-evidence-20260627.md](./bench-command-production-runner-evidence-20260627.md) | runner image published and admission-pinned; Platform enablement waits for GHCR pull access and live positive proof | Blocked |
 | INF-012 | Documentation governance agent | Traceable CMMI-style documentation control requirement | [documentation-governance-agent.md](./documentation-governance-agent.md) | backlog/document link audit | applies to all future Infra handoffs | Complete |
 | INF-013 | US region | regional expansion requirement | TBD | TBD | TBD | Later |
 | INF-014 | Local Docker runtime | [local-docker-runtime.md](./local-docker-runtime.md) | TBD | TBD | TBD | Later |
@@ -78,7 +77,6 @@ workitem explicitly changes the architecture:
 
 ## Current Platform Handoff Prompt
 
-Use [platform-runtime-namespace-handoff.md](./platform-runtime-namespace-handoff.md)
-for the next Platform Codex handoff. The Platform agent should pull Infra
-revision `f17c8d1` or newer and implement Runtime Namespace sync as the
-consumer of INF-008.
+Use [platform-bench-command-handoff.md](./platform-bench-command-handoff.md)
+for the next Platform Codex handoff. Platform must keep production Site Control
+commands disabled until `INF-011` moves from `Blocked` to `Complete`.

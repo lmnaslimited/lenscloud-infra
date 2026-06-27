@@ -55,4 +55,12 @@ docker build \
   bench-command-runner
 ```
 
-The image must be published and pinned by digest before live production use.
+Published image:
+
+```text
+ghcr.io/lmnaslimited/lenscloud-bench-command-runner@sha256:c3e0922ca034c840ebd06c29b52794fec54c655b62444df60393f2ed5501d920
+```
+
+The live admission policy accepts this digest for production Bench Command Jobs.
+Cluster pull access must be verified in each runtime environment before Platform
+enables the implemented commands.
