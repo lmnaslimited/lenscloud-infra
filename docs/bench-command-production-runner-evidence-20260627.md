@@ -196,17 +196,28 @@ Production runner positive live proof:
 ```text
 script: scripts/60-verify-bench-command-production-runner.sh
 command: maintenance_mode.enable
-status: blocked
-reason: worker cannot pull new GHCR package anonymously
-observed pod state: ImagePullBackOff
-observed pull error: 401 Unauthorized from ghcr.io token endpoint
+status: passed
+runner image: ghcr.io/lmnaslimited/lenscloud-bench-command-runner@sha256:c3e0922ca034c840ebd06c29b52794fec54c655b62444df60393f2ed5501d920
+sanitized result summary: present
+negative non-runner image: denied
 ```
 
-Retest on 2026-06-28:
+Retest on 2026-06-28 before package visibility was corrected:
 
 ```text
 temporary prefix: run-20260628-1453-bench-runner
 result: blocked at the same ImagePullBackOff / GHCR 401 Unauthorized gate
+cleanup: no matching temporary resources remained after verifier exit
+```
+
+Final verification on 2026-06-28 after the package was made public:
+
+```text
+temporary prefix: run-20260628-1503-bench-runner
+result: passed
+positive command: maintenance_mode.enable
+sanitized result summary: present
+negative non-runner image: denied
 cleanup: no matching temporary resources remained after verifier exit
 ```
 
@@ -228,13 +239,9 @@ temporary ConfigMaps: removed
 post-cleanup grep in lenscloud-runtime-eu: no matching resources
 ```
 
-Before enabling Platform UI controls beyond current `bench_test.status`, Infra
-must do one of the following and rerun
-`scripts/60-verify-bench-command-production-runner.sh` successfully:
-
-1. make the GHCR package publicly pullable by the cluster; or
-2. install an infra-owned image pull secret for the runtime namespaces and keep
-   the Secret value out of Platform, logs, Git, and handoff documents.
+Platform may now integrate implemented runner commands behind Site Control
+policy and per-command acceptance. Runner-pending families must continue to
+return `Unsupported / COMMAND_UNSUPPORTED`.
 
 ## Protected Baseline
 
@@ -253,12 +260,9 @@ infrastructure Secrets and private keys
 
 ## Remaining Production Gaps
 
-- GHCR pull access for the new runner package.
-- Live positive command proof for implemented commands after pull access is
-  resolved.
 - Backup storage/metadata contract.
 - Restore signed runbook and destructive confirmation.
 - Bench Test and LATP production runner contracts.
 - NetworkPolicy/resource quotas for command Jobs.
-- Platform command availability should only enable locally implemented commands
-  after live image verification; all others must remain `Unsupported`.
+- Platform command availability should enable only implemented/policy-approved
+  commands. Runner-pending families must remain `Unsupported`.

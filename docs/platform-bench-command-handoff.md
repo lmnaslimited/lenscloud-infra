@@ -74,9 +74,10 @@ must not create a `Release Group` for the runner image. Release Groups continue
 to describe customer Bench images such as `lens-pure`; the runner image is a
 separate Infra-approved helper used only by temporary Bench Command Jobs.
 
-Until Infra completes live runner verification, Platform should only consume
-the proven `bench_test.status` smoke path and must keep production Site Control
-commands pending.
+Infra completed live runner verification for the pinned runner image with
+`maintenance_mode.enable` on 2026-06-28. Platform may now integrate the
+implemented runner commands behind Site Control policy, while keeping
+runner-pending families explicitly `Unsupported`.
 
 Infra has added production runner source for safe Site Control operations in:
 
@@ -90,11 +91,8 @@ The runner image is published and admission-pinned:
 ghcr.io/lmnaslimited/lenscloud-bench-command-runner@sha256:c3e0922ca034c840ebd06c29b52794fec54c655b62444df60393f2ed5501d920
 ```
 
-Live positive proof is still blocked because the EU worker receives `401
-Unauthorized` when pulling that new GHCR package anonymously. Platform must keep
-the newly implemented runner commands disabled or marked pending until Infra
-either makes the package public or installs an infra-owned image pull secret and
-reruns `scripts/60-verify-bench-command-production-runner.sh` successfully.
+Live positive proof passed on 2026-06-28 after the GHCR package was made
+publicly pullable by the EU worker.
 
 ## Runtime Namespace Scope
 
@@ -263,10 +261,10 @@ Platform should normalize Job state to:
 | --- | --- | --- | --- |
 | `backup` | `backup.create`, `backup.status` | Contracted, runner pending | Must return backup metadata only, not file contents or passwords |
 | `restore` | `restore.preview`, `restore.execute`, `restore.status` | Unsupported until restore runbook is finalized | Must require explicit destructive confirmation and backup identity |
-| `maintenance_mode` | `maintenance_mode.enable`, `maintenance_mode.disable`, `maintenance_mode.status` | Runner image published and admission-pinned; live positive proof blocked by GHCR pull access | Uses approved site config key `maintenance_mode` |
-| `developer_mode` | `developer_mode.enable`, `developer_mode.disable`, `developer_mode.status` | Runner image published and admission-pinned; live positive proof blocked by GHCR pull access | Prod policy should normally reject enable |
-| `site_config` | `site_config.set`, `site_config.unset`, `site_config.get` | Runner image published and admission-pinned; live positive proof blocked by GHCR pull access | Platform must validate key allowlist and value type |
-| `cors` | `cors.allowlist.update`, `cors.allowlist.get` | Runner image published and admission-pinned; live positive proof blocked by GHCR pull access | Wildcard origin rejected by runner |
+| `maintenance_mode` | `maintenance_mode.enable`, `maintenance_mode.disable`, `maintenance_mode.status` | Runner live-verified for `maintenance_mode.enable`; family ready for Platform integration and per-command acceptance | Uses approved site config key `maintenance_mode` |
+| `developer_mode` | `developer_mode.enable`, `developer_mode.disable`, `developer_mode.status` | Runner source/local verified; ready for Platform policy-gated integration and per-command acceptance | Prod policy should normally reject enable |
+| `site_config` | `site_config.set`, `site_config.unset`, `site_config.get` | Runner source/local verified for approved keys; ready for Platform policy-gated integration and per-command acceptance | Platform must validate key allowlist and value type |
+| `cors` | `cors.allowlist.update`, `cors.allowlist.get` | Runner source/local verified; ready for Platform policy-gated integration and per-command acceptance | Wildcard origin rejected by runner |
 | `bench_test` | `bench_test.trigger`, `bench_test.status` | Platform smoke available for `bench_test.status`; production suite runner pending | Phase 1 positive proof uses harmless `bench_test.status` contract check |
 | `latp` | `latp.trigger`, `latp.status` | Contracted, runner pending | Production LATP must be non-destructive |
 
@@ -405,13 +403,13 @@ Secret listing and pod log read: denied
 Unapproved namespace and default namespace creation: denied
 ```
 
-Production runner gate status on 2026-06-27:
+Production runner gate status on 2026-06-28:
 
 ```text
 Runner image: published to GHCR and pinned by digest.
 Admission: live-applied and denies non-runner maintenance_mode images.
 Local container smoke: passed.
-Live positive runner Job: blocked by GHCR anonymous pull 401 Unauthorized.
+Live positive runner Job: passed for maintenance_mode.enable.
 Cleanup: temporary runner Job, ConfigMaps, and Pod removed.
 ```
 
@@ -458,9 +456,9 @@ Start with `bench_test.status` as the live positive contract path.
 
 Infra runner source now implements maintenance mode, developer mode, approved
 site_config keys, and CORS allowlist locally, and the image is published and
-admission-pinned. These controls must remain pending in Platform UI/policy
-enforcement until Infra resolves GHCR pull access and completes live positive
-image verification.
+admission-pinned. `maintenance_mode.enable` has passed live verification, so
+Platform may integrate implemented runner commands behind Site Control policy
+and per-command acceptance.
 
 Backup, restore, Bench Test trigger, and LATP remain runner-pending or
 unsupported as documented.
