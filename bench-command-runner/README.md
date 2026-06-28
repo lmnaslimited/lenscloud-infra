@@ -3,6 +3,28 @@
 This runner is the production-side implementation source for the Bench Command
 Job/API contract.
 
+## Architecture Position
+
+The runner is an Infra-owned helper image. It is not a LensCloud Platform
+Release Group image and it should not replace the customer Bench image.
+
+Customer Benches continue to run their selected Release image, for example a
+`lens-pure` or customer-specific Frappe image. Bench Command Jobs use this
+runner image only as a controlled execution vehicle for approved operational
+commands.
+
+Platform consumes the runner through the documented Bench Command Job/API
+contract after Infra has:
+
+1. built and published the runner image;
+2. pinned the digest in admission policy;
+3. verified image pull access in the target cluster;
+4. run live positive and negative command checks;
+5. recorded cleanup and non-secret evidence.
+
+Do not require every Release image to include this runner unless a future
+architecture workitem explicitly changes the contract.
+
 It is designed to run inside a Bench-compatible image with the target Bench
 sites directory mounted at:
 

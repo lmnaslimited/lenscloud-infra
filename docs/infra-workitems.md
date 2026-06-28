@@ -42,6 +42,9 @@ The current Infra-to-Platform Bench Command state is:
 - admission image pin: live-applied
 - live positive proof: blocked by GHCR anonymous pull authorization for the new
   runner package
+- ownership boundary: runner is an Infra-owned helper capability; Platform
+  consumes it only through the Bench Command Job/API contract after Infra live
+  verification
 - supporting handoff: [platform-bench-command-handoff.md](./platform-bench-command-handoff.md)
 
 ## Backlog

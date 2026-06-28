@@ -18,6 +18,18 @@ This evidence is non-secret. No kubeconfig, token, password, private key,
 database credential, Kubernetes Secret value, raw backup content, pod log, or
 full environment dump is included.
 
+## Architecture Confirmation
+
+The Bench Command runner is an Infra-owned helper image and cluster capability.
+It is not a customer Bench Release image and must not be registered in
+LensCloud Platform as a normal `Release Group`.
+
+Platform consumes the runner through the Bench Command Job/API contract only
+after Infra proves it in the target cluster. Platform remains responsible for
+policy, intent, action logs, UI state, and request creation through the
+restricted Kubernetes API; Infra remains responsible for runner image build,
+publish, pull access, admission, RBAC, verification, and cleanup evidence.
+
 ## Implemented Repo Artifacts
 
 Runner source:
@@ -188,6 +200,14 @@ status: blocked
 reason: worker cannot pull new GHCR package anonymously
 observed pod state: ImagePullBackOff
 observed pull error: 401 Unauthorized from ghcr.io token endpoint
+```
+
+Retest on 2026-06-28:
+
+```text
+temporary prefix: run-20260628-1453-bench-runner
+result: blocked at the same ImagePullBackOff / GHCR 401 Unauthorized gate
+cleanup: no matching temporary resources remained after verifier exit
 ```
 
 Admission negative proof:

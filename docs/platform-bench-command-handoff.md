@@ -49,6 +49,35 @@ The Phase 1 verification proves:
 Platform may run live `bench_test.status` smoke through this Job/ConfigMap
 contract in `lenscloud-runtime-eu`.
 
+## Ownership Model
+
+Bench Command execution is an Infra runtime capability, not a Release Group
+image responsibility.
+
+LensCloud Platform owns customer policy and intent:
+
+- which command is allowed for a Site;
+- when the command should run;
+- which approved Runtime Namespace, Bench, and Site are targeted;
+- action logs, UI progress, retries, and customer-facing evidence.
+
+Infra owns the command execution substrate:
+
+- runner image source, build, publication, and digest pinning;
+- image pull access for every approved Runtime Namespace;
+- admission policy and RBAC;
+- runner verification, cleanup, and non-secret evidence;
+- the command contract and supported/unsupported matrix.
+
+Platform must not ask every Release image to include the runner, and Platform
+must not create a `Release Group` for the runner image. Release Groups continue
+to describe customer Bench images such as `lens-pure`; the runner image is a
+separate Infra-approved helper used only by temporary Bench Command Jobs.
+
+Until Infra completes live runner verification, Platform should only consume
+the proven `bench_test.status` smoke path and must keep production Site Control
+commands pending.
+
 Infra has added production runner source for safe Site Control operations in:
 
 ```text
