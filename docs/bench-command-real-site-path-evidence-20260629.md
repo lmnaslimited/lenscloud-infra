@@ -80,8 +80,8 @@ BENCH_PATH/sites
 Published and admission-pinned image:
 
 ```text
-ghcr.io/lmnaslimited/lenscloud-bench-command-runner:v0.1.1
-ghcr.io/lmnaslimited/lenscloud-bench-command-runner@sha256:3c322afc631b7db49759059c6706a3f42668cfbf5017ee66b3f4c26d9235c49e
+ghcr.io/lmnaslimited/lenscloud-bench-command-runner:v0.1.2
+ghcr.io/lmnaslimited/lenscloud-bench-command-runner@sha256:ab69e3ff24584e268bfa92f44c5d71e680ce1780cc8a4a9a5ce1e60b3e4bf4e7
 ```
 
 Admission policy:
@@ -119,7 +119,7 @@ Result:
 ```text
 Bench Command production runner verification passed.
 Runtime namespace: lenscloud-runtime-eu
-Runner image: ghcr.io/lmnaslimited/lenscloud-bench-command-runner@sha256:3c322afc631b7db49759059c6706a3f42668cfbf5017ee66b3f4c26d9235c49e
+Runner image: ghcr.io/lmnaslimited/lenscloud-bench-command-runner@sha256:ab69e3ff24584e268bfa92f44c5d71e680ce1780cc8a4a9a5ce1e60b3e4bf4e7
 Positive command: maintenance_mode.enable
 Sanitized result summary: present
 Negative non-runner image: denied
@@ -206,7 +206,7 @@ Read:
 Update Platform Bench Command Job generation to use:
 
 - runner image:
-  ghcr.io/lmnaslimited/lenscloud-bench-command-runner@sha256:3c322afc631b7db49759059c6706a3f42668cfbf5017ee66b3f4c26d9235c49e
+  ghcr.io/lmnaslimited/lenscloud-bench-command-runner@sha256:ab69e3ff24584e268bfa92f44c5d71e680ce1780cc8a4a9a5ce1e60b3e4bf4e7
 - Bench sites PVC mounted at:
   /home/frappe/frappe-bench/sites
 - BENCH_PATH=/home/frappe/frappe-bench

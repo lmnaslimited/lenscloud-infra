@@ -30,8 +30,8 @@ Blocked -> Later
 
 ## Active Gate
 
-Infra has completed the real Bench sites PVC path/mount contract gate for
-`INF-015`.
+Infra has completed the Bench Command sanitized result display contract gate
+for `INF-016`.
 
 The current Infra-to-Platform Bench Command state is:
 
@@ -47,6 +47,8 @@ The current Infra-to-Platform Bench Command state is:
   verification
 - real Bench runner path contract: complete; runner now supports the Frappe
   Operator `frappe-sites/<site>/site_config.json` PVC layout
+- result display contract: complete for supported read/status commands so
+  Platform can render values such as `Maintenance mode: Off`
 - supporting handoff: [platform-bench-command-handoff.md](./platform-bench-command-handoff.md)
 
 ## Backlog
@@ -68,6 +70,7 @@ The current Infra-to-Platform Bench Command state is:
 | INF-013 | US region | regional expansion requirement | TBD | TBD | TBD | Later |
 | INF-014 | Local Docker runtime | [local-docker-runtime.md](./local-docker-runtime.md) | TBD | TBD | TBD | Later |
 | INF-015 | Real Bench runner sites PVC path contract | Platform handoff `infra-handoff-real-bench-runner-site-config-path-20260629.md` | `bench-command-runner/`, `scripts/61-verify-real-bench-runner-site-path.sh` | [bench-command-real-site-path-evidence-20260629.md](./bench-command-real-site-path-evidence-20260629.md) | Platform should mount the Bench sites PVC at `/home/frappe/frappe-bench/sites`; runner handles `frappe-sites/<site>/site_config.json` | Complete |
+| INF-016 | Bench Command sanitized result display contract | Platform handoff `handoffs/infra/bench-command-result-display-contract-20260629.md` | `bench-command-runner/`, `scripts/59-test-bench-command-runner-local.sh` | [bench-command-result-display-evidence-20260629.md](./bench-command-result-display-evidence-20260629.md) | Platform should render top-level `display` only when `display.safe=true`; runner-pending families remain `Unsupported` | Complete |
 
 ## Protected Baseline
 

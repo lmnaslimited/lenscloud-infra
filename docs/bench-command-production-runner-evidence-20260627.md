@@ -139,16 +139,17 @@ Secret-redaction proof:
 The runner source and Dockerfile are ready. The production image has been built,
 pushed, pinned by digest, and added to the live admission policy.
 
-2026-06-29 update: INF-015 replaced the original `v0.1.0` runner with `v0.1.1`
-to support the real Frappe Operator `frappe-sites/<site>/site_config.json`
-layout. The current pinned image is listed below. The original INF-011 image
-history remains available in Git history.
+2026-06-29 update: INF-015 replaced the original `v0.1.0` runner with a
+real-sites path compatible runner. INF-016 then replaced that image with
+`v0.1.2` to add the sanitized display contract. The current pinned image is
+listed below. The original INF-011 image history remains available in Git
+history.
 
 Image:
 
 ```text
-ghcr.io/lmnaslimited/lenscloud-bench-command-runner:v0.1.1
-ghcr.io/lmnaslimited/lenscloud-bench-command-runner@sha256:3c322afc631b7db49759059c6706a3f42668cfbf5017ee66b3f4c26d9235c49e
+ghcr.io/lmnaslimited/lenscloud-bench-command-runner:v0.1.2
+ghcr.io/lmnaslimited/lenscloud-bench-command-runner@sha256:ab69e3ff24584e268bfa92f44c5d71e680ce1780cc8a4a9a5ce1e60b3e4bf4e7
 ```
 
 Build and push summary:
@@ -156,7 +157,7 @@ Build and push summary:
 ```text
 docker build --platform linux/amd64: passed
 docker push: passed
-published digest: sha256:3c322afc631b7db49759059c6706a3f42668cfbf5017ee66b3f4c26d9235c49e
+published digest: sha256:ab69e3ff24584e268bfa92f44c5d71e680ce1780cc8a4a9a5ce1e60b3e4bf4e7
 ```
 
 Container smoke summary:
@@ -202,7 +203,7 @@ Production runner positive live proof:
 script: scripts/60-verify-bench-command-production-runner.sh
 command: maintenance_mode.enable
 status: passed
-runner image: ghcr.io/lmnaslimited/lenscloud-bench-command-runner@sha256:3c322afc631b7db49759059c6706a3f42668cfbf5017ee66b3f4c26d9235c49e
+runner image: ghcr.io/lmnaslimited/lenscloud-bench-command-runner@sha256:ab69e3ff24584e268bfa92f44c5d71e680ce1780cc8a4a9a5ce1e60b3e4bf4e7
 sanitized result summary: present
 negative non-runner image: denied
 ```
@@ -226,7 +227,7 @@ negative non-runner image: denied
 cleanup: no matching temporary resources remained after verifier exit
 ```
 
-Current `v0.1.1` verification is recorded in:
+Current `v0.1.2` verification is recorded in:
 
 ```text
 docs/bench-command-real-site-path-evidence-20260629.md

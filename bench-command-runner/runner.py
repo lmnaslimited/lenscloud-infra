@@ -115,6 +115,7 @@ def result(
     changed: bool = False,
     code: str | None = None,
     details: dict[str, Any] | None = None,
+    display: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     payload = {
         "phase": phase,
@@ -133,7 +134,64 @@ def result(
         payload["code"] = code
     if details:
         payload["details"] = sanitize(details)
+    if display:
+        payload["display"] = sanitize(display)
     return payload
+
+
+def human_flag(value: Any) -> str:
+    return "On" if bool(int(value or 0)) else "Off"
+
+
+def scalar_kind(value: Any) -> str:
+    if isinstance(value, bool):
+        return "boolean"
+    if isinstance(value, int):
+        return "integer"
+    if isinstance(value, float):
+        return "number"
+    if value is None:
+        return "empty"
+    return "string"
+
+
+def site_config_label(key: str) -> str:
+    labels = {
+        "allow_cors": "CORS allowlist",
+        "client_script_enabled": "Client script",
+        "developer_mode": "Developer mode",
+        "maintenance_mode": "Maintenance mode",
+        "server_script_enabled": "Server script",
+    }
+    return labels.get(key, f"Site config: {key}")
+
+
+def display_for_site_config(key: str, value: Any) -> dict[str, Any]:
+    if key in {"maintenance_mode", "developer_mode", "server_script_enabled", "client_script_enabled"}:
+        raw_value = int(value or 0)
+        return {
+            "label": site_config_label(key),
+            "value": human_flag(raw_value),
+            "kind": "boolean",
+            "rawValue": raw_value,
+            "safe": True,
+        }
+    if key == "allow_cors":
+        origins = [item for item in str(value or "").splitlines() if item.strip()]
+        return {
+            "label": site_config_label(key),
+            "value": origins,
+            "kind": "origin-list",
+            "rawValue": origins,
+            "safe": True,
+        }
+    return {
+        "label": site_config_label(key),
+        "value": "" if value is None else str(value),
+        "kind": scalar_kind(value),
+        "rawValue": value,
+        "safe": True,
+    }
 
 
 def write_result(payload: dict[str, Any]) -> None:
@@ -249,6 +307,7 @@ def command_site_config(command: str, target: dict[str, Any], args: dict[str, An
             target=target,
             summary=f"Read approved site_config key {key}",
             details={"key": key, "value": config.get(key), "layout": layout},
+            display=display_for_site_config(key, config.get(key)),
         )
 
     if command == "site_config.set":
@@ -306,6 +365,7 @@ def command_boolean_config(
             target=target,
             summary=f"Read {key} status",
             details={"key": key, "value": int(config.get(key) or 0), "layout": layout},
+            display=display_for_site_config(key, int(config.get(key) or 0)),
         )
 
     before = int(config.get(key) or 0)
@@ -333,6 +393,7 @@ def command_cors(command: str, target: dict[str, Any], args: dict[str, Any]) -> 
             target=target,
             summary="Read CORS allowlist",
             details={"key": key, "value": config.get(key), "layout": layout},
+            display=display_for_site_config(key, config.get(key)),
         )
     origins = args.get("origins")
     if not isinstance(origins, list) or not all(isinstance(item, str) for item in origins):

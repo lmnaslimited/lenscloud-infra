@@ -88,12 +88,12 @@ bench-command-runner/
 The current runner image is published and admission-pinned:
 
 ```text
-ghcr.io/lmnaslimited/lenscloud-bench-command-runner@sha256:3c322afc631b7db49759059c6706a3f42668cfbf5017ee66b3f4c26d9235c49e
+ghcr.io/lmnaslimited/lenscloud-bench-command-runner@sha256:ab69e3ff24584e268bfa92f44c5d71e680ce1780cc8a4a9a5ce1e60b3e4bf4e7
 ```
 
 Live positive proof for the runner capability passed on 2026-06-28 after the
-GHCR package was made publicly pullable by the EU worker. The current `v0.1.1`
-image was live-verified again on 2026-06-29.
+GHCR package was made publicly pullable by the EU worker. The current `v0.1.2`
+image with the display contract was live-verified on 2026-06-29.
 
 Real Frappe Operator sites PVC proof passed on 2026-06-29 with
 `maintenance_mode.status` against:
@@ -197,7 +197,7 @@ spec:
       restartPolicy: Never
       containers:
         - name: bench-command
-          image: ghcr.io/lmnaslimited/lenscloud-bench-command-runner@sha256:3c322afc631b7db49759059c6706a3f42668cfbf5017ee66b3f4c26d9235c49e
+          image: ghcr.io/lmnaslimited/lenscloud-bench-command-runner@sha256:ab69e3ff24584e268bfa92f44c5d71e680ce1780cc8a4a9a5ce1e60b3e4bf4e7
 ```
 
 The Job may read the request ConfigMap and non-secret ConfigMaps required for
@@ -280,12 +280,72 @@ Example sanitized result:
   },
   "summary": "Maintenance mode enabled",
   "changed": true,
+  "display": {
+    "label": "Maintenance mode",
+    "value": "On",
+    "kind": "boolean",
+    "rawValue": 1,
+    "safe": true
+  },
   "redacted": true
 }
 ```
 
 No Secret values, DB passwords, private keys, kubeconfig content, full env
 dumps, or raw backup file contents may appear in the result.
+
+## Result Display Contract
+
+The runner may include a top-level `display` object for commands whose result is
+safe and useful for a human UI. Platform should prefer `display` for the
+operator-facing result text and keep `details` as structured diagnostic context.
+
+Stable display fields:
+
+| Field | Type | UI Safe | Meaning |
+| --- | --- | --- | --- |
+| `display.label` | string | Yes | Human label, for example `Maintenance mode` |
+| `display.value` | string/list/number/null | Yes when `safe=true` | Human display value |
+| `display.kind` | string | Yes | Renderer hint such as `boolean`, `origin-list`, `string`, `integer`, `empty` |
+| `display.rawValue` | scalar/list/null | Yes when `safe=true` | Machine-friendly safe value |
+| `display.safe` | boolean | Yes | Must be `true` before Platform renders `display.value` |
+
+Platform must not render `details.value` directly unless the command/key is
+explicitly known safe. `details` remains useful for audits and backend tests,
+but `display` is the UI contract.
+
+Boolean/flag display rule:
+
+```text
+0 / false -> Off
+1 / true  -> On
+```
+
+Supported read/status display mappings:
+
+| Command | Display label | Kind | Display value |
+| --- | --- | --- | --- |
+| `maintenance_mode.status` | `Maintenance mode` | `boolean` | `On` or `Off` |
+| `developer_mode.status` | `Developer mode` | `boolean` | `On` or `Off` |
+| `site_config.get` with `maintenance_mode` | `Maintenance mode` | `boolean` | `On` or `Off` |
+| `site_config.get` with `developer_mode` | `Developer mode` | `boolean` | `On` or `Off` |
+| `site_config.get` with `server_script_enabled` | `Server script` | `boolean` | `On` or `Off` |
+| `site_config.get` with `client_script_enabled` | `Client script` | `boolean` | `On` or `Off` |
+| `site_config.get` with `allow_cors` | `CORS allowlist` | `origin-list` | safe origin list |
+| `cors.allowlist.get` | `CORS allowlist` | `origin-list` | safe origin list |
+
+The runner rejects sensitive keys before returning a value. Any
+`site_config.get` key matching password, token, secret, private key, credential,
+cookie, or authorization patterns returns:
+
+```text
+phase: Failed
+code: INVALID_ARGUMENTS
+summary: site_config key is not approved
+```
+
+Failed or unsupported responses do not include a `display` object. Platform
+should render the sanitized `summary`, `phase`, and `code` instead.
 
 ## Status Phases
 
@@ -474,7 +534,7 @@ Runner image: published to GHCR and pinned by digest.
 Admission: live-applied and denies non-runner maintenance_mode images.
 Local container smoke: passed.
 Live positive runner Job: passed for maintenance_mode.enable.
-Current v0.1.1 runner image: live-verified on 2026-06-29.
+Current v0.1.2 runner image: live-verified on 2026-06-29.
 Cleanup: temporary runner Job, ConfigMaps, and Pod removed.
 ```
 

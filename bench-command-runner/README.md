@@ -56,9 +56,27 @@ The runner:
 - validates command, target, and typed args;
 - mutates only approved `site_config.json` keys for supported controls;
 - returns sanitized JSON through the container termination log;
+- returns a stable `display` object for supported read/status commands;
 - does not use the Kubernetes API;
 - does not require Kubernetes Secret mounts;
 - does not print full environment dumps, DB passwords, tokens, or private keys.
+
+Display contract:
+
+```json
+{
+  "display": {
+    "label": "Maintenance mode",
+    "value": "Off",
+    "kind": "boolean",
+    "rawValue": 0,
+    "safe": true
+  }
+}
+```
+
+Platform may render `display.value` only when `display.safe` is `true`.
+Failed and unsupported commands do not include `display`.
 
 Current implemented commands:
 
@@ -91,14 +109,14 @@ Build example:
 
 ```bash
 docker build \
-  -t ghcr.io/lmnaslimited/lenscloud-bench-command-runner:v0.1.1 \
+  -t ghcr.io/lmnaslimited/lenscloud-bench-command-runner:v0.1.2 \
   bench-command-runner
 ```
 
 Published image:
 
 ```text
-ghcr.io/lmnaslimited/lenscloud-bench-command-runner@sha256:3c322afc631b7db49759059c6706a3f42668cfbf5017ee66b3f4c26d9235c49e
+ghcr.io/lmnaslimited/lenscloud-bench-command-runner@sha256:ab69e3ff24584e268bfa92f44c5d71e680ce1780cc8a4a9a5ce1e60b3e4bf4e7
 ```
 
 The live admission policy accepts this digest for production Bench Command Jobs.

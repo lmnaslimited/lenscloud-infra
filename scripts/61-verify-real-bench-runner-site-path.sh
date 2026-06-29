@@ -4,7 +4,7 @@ set -euo pipefail
 : "${MANAGER_KUBECONFIG:=/etc/rancher/k3s/k3s.yaml}"
 : "${PLATFORM_KUBECONFIG:=.artifacts/lenscloud-eu.kubeconfig}"
 : "${RUNTIME_NAMESPACE:=lenscloud-runtime-eu}"
-: "${RUNNER_IMAGE:=ghcr.io/lmnaslimited/lenscloud-bench-command-runner@sha256:3c322afc631b7db49759059c6706a3f42668cfbf5017ee66b3f4c26d9235c49e}"
+: "${RUNNER_IMAGE:=ghcr.io/lmnaslimited/lenscloud-bench-command-runner@sha256:ab69e3ff24584e268bfa92f44c5d71e680ce1780cc8a4a9a5ce1e60b3e4bf4e7}"
 : "${REAL_BENCH:=run-20260629-free-prod-bench}"
 : "${REAL_SITE:=run-20260629-free-prod-site.cloud.lmnaslens.com}"
 : "${REAL_SITES_PVC:=run-20260629-free-prod-bench-sites}"
@@ -136,6 +136,11 @@ if [[ "$termination_message" != *'"layout":"frappe-sites"'* ]]; then
   exit 1
 fi
 
+if [[ "$termination_message" != *'"display":{"kind":"boolean","label":"Maintenance mode"'* ]]; then
+  echo "Real Bench runner did not report the expected Maintenance mode display block." >&2
+  exit 1
+fi
+
 if [[ "$termination_message" == *"db_password"* || "$termination_message" == *"must-not-leak"* ]]; then
   echo "Real Bench runner termination summary exposed sensitive content." >&2
   exit 1
@@ -151,5 +156,6 @@ echo "Site: ${REAL_SITE}"
 echo "Sites PVC: ${REAL_SITES_PVC}"
 echo "Positive command: maintenance_mode.status"
 echo "Detected layout: frappe-sites"
+echo "Display block: Maintenance mode"
 echo "Sanitized result summary: present"
 echo "Temporary resource prefix: ${TEST_PREFIX}"

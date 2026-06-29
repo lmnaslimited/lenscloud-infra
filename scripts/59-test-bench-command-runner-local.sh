@@ -54,22 +54,35 @@ run_command maintenance_enable \
 grep '"maintenance_mode": 1' "$bench_path/sites/$site/site_config.json" >/dev/null
 
 run_command maintenance_status \
-  "{\"apiVersion\":\"lenscloud.io/v1\",\"kind\":\"BenchCommand\",\"commandId\":\"local-2\",\"command\":\"maintenance_mode.status\",${base_target},\"args\":{},\"timeoutSeconds\":60}"
+  "{\"apiVersion\":\"lenscloud.io/v1\",\"kind\":\"BenchCommand\",\"commandId\":\"local-2\",\"command\":\"maintenance_mode.status\",${base_target},\"args\":{},\"timeoutSeconds\":60}" |
+  grep -F '"display":{"kind":"boolean","label":"Maintenance mode","rawValue":1,"safe":true,"value":"On"}' >/dev/null
 
 run_command developer_enable \
   "{\"apiVersion\":\"lenscloud.io/v1\",\"kind\":\"BenchCommand\",\"commandId\":\"local-3\",\"command\":\"developer_mode.enable\",${base_target},\"args\":{},\"timeoutSeconds\":60}"
 
 grep '"developer_mode": 1' "$bench_path/sites/$site/site_config.json" >/dev/null
 
+run_command developer_status \
+  "{\"apiVersion\":\"lenscloud.io/v1\",\"kind\":\"BenchCommand\",\"commandId\":\"local-3b\",\"command\":\"developer_mode.status\",${base_target},\"args\":{},\"timeoutSeconds\":60}" |
+  grep -F '"display":{"kind":"boolean","label":"Developer mode","rawValue":1,"safe":true,"value":"On"}' >/dev/null
+
 run_command site_config_set \
   "{\"apiVersion\":\"lenscloud.io/v1\",\"kind\":\"BenchCommand\",\"commandId\":\"local-4\",\"command\":\"site_config.set\",${base_target},\"args\":{\"key\":\"server_script_enabled\",\"value\":1},\"timeoutSeconds\":60}"
 
 grep '"server_script_enabled": 1' "$bench_path/sites/$site/site_config.json" >/dev/null
 
+run_command site_config_get \
+  "{\"apiVersion\":\"lenscloud.io/v1\",\"kind\":\"BenchCommand\",\"commandId\":\"local-4b\",\"command\":\"site_config.get\",${base_target},\"args\":{\"key\":\"server_script_enabled\"},\"timeoutSeconds\":60}" |
+  grep -F '"display":{"kind":"boolean","label":"Server script","rawValue":1,"safe":true,"value":"On"}' >/dev/null
+
 run_command cors_update \
   "{\"apiVersion\":\"lenscloud.io/v1\",\"kind\":\"BenchCommand\",\"commandId\":\"local-5\",\"command\":\"cors.allowlist.update\",${base_target},\"args\":{\"origins\":[\"https://app.example.com\",\"https://admin.example.com\"]},\"timeoutSeconds\":60}"
 
 grep 'https://admin.example.com' "$bench_path/sites/$site/site_config.json" >/dev/null
+
+run_command cors_get \
+  "{\"apiVersion\":\"lenscloud.io/v1\",\"kind\":\"BenchCommand\",\"commandId\":\"local-5b\",\"command\":\"cors.allowlist.get\",${base_target},\"args\":{},\"timeoutSeconds\":60}" |
+  grep -F '"display":{"kind":"origin-list","label":"CORS allowlist","rawValue":["https://admin.example.com","https://app.example.com"],"safe":true,"value":["https://admin.example.com","https://app.example.com"]}' >/dev/null
 
 run_command unsupported_backup \
   "{\"apiVersion\":\"lenscloud.io/v1\",\"kind\":\"BenchCommand\",\"commandId\":\"local-6\",\"command\":\"backup.create\",${base_target},\"args\":{},\"timeoutSeconds\":60}" \
@@ -93,6 +106,6 @@ nested_target='"target":{"namespace":"lenscloud-runtime-eu","bench":"runner-test
 
 run_command nested_maintenance_status \
   "{\"apiVersion\":\"lenscloud.io/v1\",\"kind\":\"BenchCommand\",\"commandId\":\"local-8\",\"command\":\"maintenance_mode.status\",${nested_target},\"args\":{},\"timeoutSeconds\":60}" |
-  grep '"layout":"frappe-sites"' >/dev/null
+  grep -F '"layout":"frappe-sites"' >/dev/null
 
 echo "Bench command runner local verification passed."
