@@ -139,11 +139,16 @@ Secret-redaction proof:
 The runner source and Dockerfile are ready. The production image has been built,
 pushed, pinned by digest, and added to the live admission policy.
 
+2026-06-29 update: INF-015 replaced the original `v0.1.0` runner with `v0.1.1`
+to support the real Frappe Operator `frappe-sites/<site>/site_config.json`
+layout. The current pinned image is listed below. The original INF-011 image
+history remains available in Git history.
+
 Image:
 
 ```text
-ghcr.io/lmnaslimited/lenscloud-bench-command-runner:v0.1.0
-ghcr.io/lmnaslimited/lenscloud-bench-command-runner@sha256:c3e0922ca034c840ebd06c29b52794fec54c655b62444df60393f2ed5501d920
+ghcr.io/lmnaslimited/lenscloud-bench-command-runner:v0.1.1
+ghcr.io/lmnaslimited/lenscloud-bench-command-runner@sha256:3c322afc631b7db49759059c6706a3f42668cfbf5017ee66b3f4c26d9235c49e
 ```
 
 Build and push summary:
@@ -151,7 +156,7 @@ Build and push summary:
 ```text
 docker build --platform linux/amd64: passed
 docker push: passed
-published digest: sha256:c3e0922ca034c840ebd06c29b52794fec54c655b62444df60393f2ed5501d920
+published digest: sha256:3c322afc631b7db49759059c6706a3f42668cfbf5017ee66b3f4c26d9235c49e
 ```
 
 Container smoke summary:
@@ -197,7 +202,7 @@ Production runner positive live proof:
 script: scripts/60-verify-bench-command-production-runner.sh
 command: maintenance_mode.enable
 status: passed
-runner image: ghcr.io/lmnaslimited/lenscloud-bench-command-runner@sha256:c3e0922ca034c840ebd06c29b52794fec54c655b62444df60393f2ed5501d920
+runner image: ghcr.io/lmnaslimited/lenscloud-bench-command-runner@sha256:3c322afc631b7db49759059c6706a3f42668cfbf5017ee66b3f4c26d9235c49e
 sanitized result summary: present
 negative non-runner image: denied
 ```
@@ -210,7 +215,7 @@ result: blocked at the same ImagePullBackOff / GHCR 401 Unauthorized gate
 cleanup: no matching temporary resources remained after verifier exit
 ```
 
-Final verification on 2026-06-28 after the package was made public:
+Final INF-011 verification on 2026-06-28 after the package was made public:
 
 ```text
 temporary prefix: run-20260628-1503-bench-runner
@@ -219,6 +224,12 @@ positive command: maintenance_mode.enable
 sanitized result summary: present
 negative non-runner image: denied
 cleanup: no matching temporary resources remained after verifier exit
+```
+
+Current `v0.1.1` verification is recorded in:
+
+```text
+docs/bench-command-real-site-path-evidence-20260629.md
 ```
 
 Admission negative proof:

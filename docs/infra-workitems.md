@@ -30,8 +30,8 @@ Blocked -> Later
 
 ## Active Gate
 
-Infra is completing the Bench Command production runner image and live
-verification gate for `INF-011`.
+Infra has completed the real Bench sites PVC path/mount contract gate for
+`INF-015`.
 
 The current Infra-to-Platform Bench Command state is:
 
@@ -45,6 +45,8 @@ The current Infra-to-Platform Bench Command state is:
 - ownership boundary: runner is an Infra-owned helper capability; Platform
   consumes it only through the Bench Command Job/API contract after Infra live
   verification
+- real Bench runner path contract: complete; runner now supports the Frappe
+  Operator `frappe-sites/<site>/site_config.json` PVC layout
 - supporting handoff: [platform-bench-command-handoff.md](./platform-bench-command-handoff.md)
 
 ## Backlog
@@ -65,6 +67,7 @@ The current Infra-to-Platform Bench Command state is:
 | INF-012 | Documentation governance agent | Traceable CMMI-style documentation control requirement | [documentation-governance-agent.md](./documentation-governance-agent.md) | backlog/document link audit | applies to all future Infra handoffs | Complete |
 | INF-013 | US region | regional expansion requirement | TBD | TBD | TBD | Later |
 | INF-014 | Local Docker runtime | [local-docker-runtime.md](./local-docker-runtime.md) | TBD | TBD | TBD | Later |
+| INF-015 | Real Bench runner sites PVC path contract | Platform handoff `infra-handoff-real-bench-runner-site-config-path-20260629.md` | `bench-command-runner/`, `scripts/61-verify-real-bench-runner-site-path.sh` | [bench-command-real-site-path-evidence-20260629.md](./bench-command-real-site-path-evidence-20260629.md) | Platform should mount the Bench sites PVC at `/home/frappe/frappe-bench/sites`; runner handles `frappe-sites/<site>/site_config.json` | Complete |
 
 ## Protected Baseline
 

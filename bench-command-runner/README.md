@@ -32,6 +32,24 @@ sites directory mounted at:
 /home/frappe/frappe-bench/sites
 ```
 
+The runner supports both supported sites PVC layouts:
+
+```text
+/home/frappe/frappe-bench/sites/<site>/site_config.json
+/home/frappe/frappe-bench/sites/frappe-sites/<site>/site_config.json
+```
+
+The Frappe Operator layout verified on 2026-06-29 is the second form:
+`frappe-sites/<site>/site_config.json`.
+
+Optional environment:
+
+```text
+BENCH_PATH=/home/frappe/frappe-bench
+BENCH_SITES_PATH=/home/frappe/frappe-bench/sites
+BENCH_COMMAND_REQUEST=/lenscloud/request/request.json
+```
+
 The runner:
 
 - reads one request JSON file;
@@ -73,14 +91,14 @@ Build example:
 
 ```bash
 docker build \
-  -t ghcr.io/lmnaslimited/lenscloud-bench-command-runner:v0.1.0 \
+  -t ghcr.io/lmnaslimited/lenscloud-bench-command-runner:v0.1.1 \
   bench-command-runner
 ```
 
 Published image:
 
 ```text
-ghcr.io/lmnaslimited/lenscloud-bench-command-runner@sha256:c3e0922ca034c840ebd06c29b52794fec54c655b62444df60393f2ed5501d920
+ghcr.io/lmnaslimited/lenscloud-bench-command-runner@sha256:3c322afc631b7db49759059c6706a3f42668cfbf5017ee66b3f4c26d9235c49e
 ```
 
 The live admission policy accepts this digest for production Bench Command Jobs.

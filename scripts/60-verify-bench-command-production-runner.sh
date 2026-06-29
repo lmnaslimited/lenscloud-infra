@@ -4,7 +4,7 @@ set -euo pipefail
 : "${MANAGER_KUBECONFIG:=/etc/rancher/k3s/k3s.yaml}"
 : "${PLATFORM_KUBECONFIG:=.artifacts/lenscloud-eu.kubeconfig}"
 : "${RUNTIME_NAMESPACE:=lenscloud-runtime-eu}"
-: "${RUNNER_IMAGE:=ghcr.io/lmnaslimited/lenscloud-bench-command-runner@sha256:c3e0922ca034c840ebd06c29b52794fec54c655b62444df60393f2ed5501d920}"
+: "${RUNNER_IMAGE:=ghcr.io/lmnaslimited/lenscloud-bench-command-runner@sha256:3c322afc631b7db49759059c6706a3f42668cfbf5017ee66b3f4c26d9235c49e}"
 : "${TEST_PREFIX:=run-$(date -u +%Y%m%d-%H%M)-bench-runner}"
 
 manager=(kubectl --kubeconfig "$MANAGER_KUBECONFIG")

@@ -82,6 +82,7 @@ def getenv_path(name: str, default: str) -> Path:
 
 REQUEST_PATH = getenv_path("BENCH_COMMAND_REQUEST", "/lenscloud/request/request.json")
 BENCH_PATH = getenv_path("BENCH_PATH", "/home/frappe/frappe-bench")
+SITES_PATH = getenv_path("BENCH_SITES_PATH", str(BENCH_PATH / "sites"))
 TERMINATION_PATH = Path(os.environ.get("BENCH_COMMAND_TERMINATION_LOG", "/dev/termination-log"))
 
 
@@ -178,25 +179,41 @@ def validate_request(req: dict[str, Any]) -> tuple[str, dict[str, Any], dict[str
     return command, target, args
 
 
-def site_config_path(site: str) -> Path:
-    path = (BENCH_PATH / "sites" / site / "site_config.json").resolve()
-    expected_root = (BENCH_PATH / "sites").resolve()
+def candidate_site_roots(site: str) -> list[tuple[str, Path]]:
+    return [
+        ("sites-root", SITES_PATH / site),
+        ("frappe-sites", SITES_PATH / "frappe-sites" / site),
+    ]
+
+
+def site_config_path(site: str) -> tuple[Path, str]:
+    expected_root = SITES_PATH.resolve()
+    matches: list[tuple[str, Path]] = []
+    for layout, site_root in candidate_site_roots(site):
+        path = (site_root / "site_config.json").resolve()
+        if expected_root not in path.parents:
+            raise CommandError("TARGET_MISMATCH", "site path escapes bench sites directory")
+        if path.is_file():
+            matches.append((layout, path))
+    if len(matches) > 1:
+        raise CommandError("TARGET_MISMATCH", "site_config.json matched multiple supported layouts")
+    if not matches:
+        raise CommandError("TARGET_NOT_FOUND", "site_config.json was not found")
+    layout, path = matches[0]
     if expected_root not in path.parents:
         raise CommandError("TARGET_MISMATCH", "site path escapes bench sites directory")
-    if not path.is_file():
-        raise CommandError("TARGET_NOT_FOUND", "site_config.json was not found")
-    return path
+    return path, layout
 
 
-def load_site_config(site: str) -> tuple[Path, dict[str, Any]]:
-    path = site_config_path(site)
+def load_site_config(site: str) -> tuple[Path, str, dict[str, Any]]:
+    path, layout = site_config_path(site)
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
     except json.JSONDecodeError as exc:
         raise CommandError("RUNNER_FAILED", "site_config.json is invalid JSON") from exc
     if not isinstance(data, dict):
         raise CommandError("RUNNER_FAILED", "site_config.json must be an object")
-    return path, data
+    return path, layout, data
 
 
 def write_site_config(path: Path, data: dict[str, Any]) -> None:
@@ -221,7 +238,7 @@ def ensure_key_allowed(key: str) -> None:
 
 def command_site_config(command: str, target: dict[str, Any], args: dict[str, Any]) -> dict[str, Any]:
     site = str(target["site"])
-    path, config = load_site_config(site)
+    path, layout, config = load_site_config(site)
 
     if command == "site_config.get":
         key = str(args.get("key") or "")
@@ -231,7 +248,7 @@ def command_site_config(command: str, target: dict[str, Any], args: dict[str, An
             command=command,
             target=target,
             summary=f"Read approved site_config key {key}",
-            details={"key": key, "value": config.get(key)},
+            details={"key": key, "value": config.get(key), "layout": layout},
         )
 
     if command == "site_config.set":
@@ -251,7 +268,7 @@ def command_site_config(command: str, target: dict[str, Any], args: dict[str, An
             target=target,
             summary=f"Set approved site_config key {key}",
             changed=before != value,
-            details={"key": key, "value": value},
+            details={"key": key, "value": value, "layout": layout},
         )
 
     if command == "site_config.unset":
@@ -266,7 +283,7 @@ def command_site_config(command: str, target: dict[str, Any], args: dict[str, An
             target=target,
             summary=f"Unset approved site_config key {key}",
             changed=existed,
-            details={"key": key},
+            details={"key": key, "layout": layout},
         )
 
     raise CommandError("COMMAND_UNSUPPORTED", "unsupported site_config command", "Unsupported")
@@ -279,7 +296,7 @@ def command_boolean_config(
     value: int | None,
 ) -> dict[str, Any]:
     site = str(target["site"])
-    path, config = load_site_config(site)
+    path, layout, config = load_site_config(site)
     ensure_key_allowed(key)
 
     if command.endswith(".status"):
@@ -288,7 +305,7 @@ def command_boolean_config(
             command=command,
             target=target,
             summary=f"Read {key} status",
-            details={"key": key, "value": int(config.get(key) or 0)},
+            details={"key": key, "value": int(config.get(key) or 0), "layout": layout},
         )
 
     before = int(config.get(key) or 0)
@@ -300,13 +317,13 @@ def command_boolean_config(
         target=target,
         summary=f"Set {key} to {int(value or 0)}",
         changed=before != int(value or 0),
-        details={"key": key, "value": int(value or 0)},
+        details={"key": key, "value": int(value or 0), "layout": layout},
     )
 
 
 def command_cors(command: str, target: dict[str, Any], args: dict[str, Any]) -> dict[str, Any]:
     site = str(target["site"])
-    path, config = load_site_config(site)
+    path, layout, config = load_site_config(site)
     key = "allow_cors"
     ensure_key_allowed(key)
     if command == "cors.allowlist.get":
@@ -315,7 +332,7 @@ def command_cors(command: str, target: dict[str, Any], args: dict[str, Any]) -> 
             command=command,
             target=target,
             summary="Read CORS allowlist",
-            details={"key": key, "value": config.get(key)},
+            details={"key": key, "value": config.get(key), "layout": layout},
         )
     origins = args.get("origins")
     if not isinstance(origins, list) or not all(isinstance(item, str) for item in origins):
@@ -332,7 +349,7 @@ def command_cors(command: str, target: dict[str, Any], args: dict[str, Any]) -> 
         target=target,
         summary="Updated CORS allowlist",
         changed=before != normalized,
-        details={"key": key, "origins": normalized.splitlines()},
+        details={"key": key, "origins": normalized.splitlines(), "layout": layout},
     )
 
 

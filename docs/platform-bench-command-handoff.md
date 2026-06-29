@@ -85,14 +85,26 @@ Infra has added production runner source for safe Site Control operations in:
 bench-command-runner/
 ```
 
-The runner image is published and admission-pinned:
+The current runner image is published and admission-pinned:
 
 ```text
-ghcr.io/lmnaslimited/lenscloud-bench-command-runner@sha256:c3e0922ca034c840ebd06c29b52794fec54c655b62444df60393f2ed5501d920
+ghcr.io/lmnaslimited/lenscloud-bench-command-runner@sha256:3c322afc631b7db49759059c6706a3f42668cfbf5017ee66b3f4c26d9235c49e
 ```
 
-Live positive proof passed on 2026-06-28 after the GHCR package was made
-publicly pullable by the EU worker.
+Live positive proof for the runner capability passed on 2026-06-28 after the
+GHCR package was made publicly pullable by the EU worker. The current `v0.1.1`
+image was live-verified again on 2026-06-29.
+
+Real Frappe Operator sites PVC proof passed on 2026-06-29 with
+`maintenance_mode.status` against:
+
+```text
+namespace: lenscloud-runtime-eu
+bench: run-20260629-free-prod-bench
+site: run-20260629-free-prod-site.cloud.lmnaslens.com
+sites PVC: run-20260629-free-prod-bench-sites
+detected layout: frappe-sites
+```
 
 ## Runtime Namespace Scope
 
@@ -185,7 +197,7 @@ spec:
       restartPolicy: Never
       containers:
         - name: bench-command
-          image: ghcr.io/lmnaslimited/lenscloud-bench-command-runner@sha256:c3e0922ca034c840ebd06c29b52794fec54c655b62444df60393f2ed5501d920
+          image: ghcr.io/lmnaslimited/lenscloud-bench-command-runner@sha256:3c322afc631b7db49759059c6706a3f42668cfbf5017ee66b3f4c26d9235c49e
 ```
 
 The Job may read the request ConfigMap and non-secret ConfigMaps required for
@@ -196,6 +208,58 @@ The admission policy currently allows only:
 - the pinned production runner digest above; or
 - the legacy `busybox:1.36` image for the narrow `bench_test.status`
   verification exception.
+
+## Real Bench Sites PVC Mount Contract
+
+For real Frappe Operator-created Benches, Platform must mount the Bench sites
+PVC at:
+
+```text
+/home/frappe/frappe-bench/sites
+```
+
+and set:
+
+```text
+BENCH_PATH=/home/frappe/frappe-bench
+BENCH_COMMAND_REQUEST=/lenscloud/request/request.json
+```
+
+`BENCH_SITES_PATH` is optional. If set, it must point to the mounted sites
+directory. The runner defaults it to:
+
+```text
+/home/frappe/frappe-bench/sites
+```
+
+The runner supports both site layouts:
+
+```text
+/home/frappe/frappe-bench/sites/<site>/site_config.json
+/home/frappe/frappe-bench/sites/frappe-sites/<site>/site_config.json
+```
+
+The live Frappe Operator layout observed on 2026-06-29 is:
+
+```text
+/home/frappe/frappe-bench/sites/frappe-sites/<site>/site_config.json
+```
+
+Do not use a `subPath` for the standard runner path unless a future Infra
+workitem changes the contract.
+
+Mount mode:
+
+- status/read commands may mount the sites PVC read-only;
+- mutating commands such as `maintenance_mode.enable`,
+  `maintenance_mode.disable`, `developer_mode.enable`,
+  `developer_mode.disable`, `site_config.set`, `site_config.unset`, and
+  `cors.allowlist.update` require write access to the same sites PVC;
+- Platform must still enforce Site Control policy before creating a mutating
+  command Job.
+
+Platform must not expose or read `site_config.json` contents. The runner returns
+only sanitized summaries.
 
 ## Response Schema
 
@@ -403,14 +467,25 @@ Secret listing and pod log read: denied
 Unapproved namespace and default namespace creation: denied
 ```
 
-Production runner gate status on 2026-06-28:
+Production runner gate status:
 
 ```text
 Runner image: published to GHCR and pinned by digest.
 Admission: live-applied and denies non-runner maintenance_mode images.
 Local container smoke: passed.
 Live positive runner Job: passed for maintenance_mode.enable.
+Current v0.1.1 runner image: live-verified on 2026-06-29.
 Cleanup: temporary runner Job, ConfigMaps, and Pod removed.
+```
+
+Real Bench sites path verification on 2026-06-29:
+
+```text
+Real Bench runner sites path verification passed.
+Positive command: maintenance_mode.status
+Detected layout: frappe-sites
+Sanitized result summary: present
+Temporary resources: cleaned
 ```
 
 Canonical evidence:

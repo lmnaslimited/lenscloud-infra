@@ -79,4 +79,20 @@ run_command invalid_sensitive_key \
   "{\"apiVersion\":\"lenscloud.io/v1\",\"kind\":\"BenchCommand\",\"commandId\":\"local-7\",\"command\":\"site_config.get\",${base_target},\"args\":{\"key\":\"db_password\"},\"timeoutSeconds\":60}" \
   1 | grep '"code":"INVALID_ARGUMENTS"' >/dev/null
 
+nested_site="runner-nested.localhost"
+mkdir -p "$bench_path/sites/frappe-sites/$nested_site"
+cat >"$bench_path/sites/frappe-sites/$nested_site/site_config.json" <<'JSON'
+{
+ "db_name": "runner_nested",
+ "db_password": "must-not-leak",
+ "maintenance_mode": 0
+}
+JSON
+
+nested_target='"target":{"namespace":"lenscloud-runtime-eu","bench":"runner-test-bench","site":"runner-nested.localhost"}'
+
+run_command nested_maintenance_status \
+  "{\"apiVersion\":\"lenscloud.io/v1\",\"kind\":\"BenchCommand\",\"commandId\":\"local-8\",\"command\":\"maintenance_mode.status\",${nested_target},\"args\":{},\"timeoutSeconds\":60}" |
+  grep '"layout":"frappe-sites"' >/dev/null
+
 echo "Bench command runner local verification passed."
