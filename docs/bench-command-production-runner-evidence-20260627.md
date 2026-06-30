@@ -90,7 +90,6 @@ COMMAND_UNSUPPORTED` until the relevant production runner flow is finalized:
 | Command | Reason |
 | --- | --- |
 | `backup.create` | backup storage/retention contract pending |
-| `backup.status` | backup metadata contract pending |
 | `restore.preview` | restore runbook and destructive confirmation pending |
 | `restore.execute` | restore runbook and destructive confirmation pending |
 | `restore.status` | restore status source pending |
@@ -98,6 +97,10 @@ COMMAND_UNSUPPORTED` until the relevant production runner flow is finalized:
 | `bench_test.status` | current Platform smoke path exists; production suite status source pending |
 | `latp.trigger` | LATP runner contract pending |
 | `latp.status` | LATP status source pending |
+
+2026-06-30 update: INF-017 moved metadata-only `backup.status` from
+runner-pending to live-verified. See
+[bench-command-remaining-families-evidence-20260630.md](./bench-command-remaining-families-evidence-20260630.md).
 
 ## Local Verification
 
@@ -141,15 +144,17 @@ pushed, pinned by digest, and added to the live admission policy.
 
 2026-06-29 update: INF-015 replaced the original `v0.1.0` runner with a
 real-sites path compatible runner. INF-016 then replaced that image with
-`v0.1.2` to add the sanitized display contract. The current pinned image is
+`v0.1.2` to add the sanitized display contract. INF-017 replaced the current
+pinned image with `v0.1.4` to add metadata-only `backup.status` and keep unsafe
+backup/restore commands explicitly Unsupported. The current pinned image is
 listed below. The original INF-011 image history remains available in Git
 history.
 
 Image:
 
 ```text
-ghcr.io/lmnaslimited/lenscloud-bench-command-runner:v0.1.2
-ghcr.io/lmnaslimited/lenscloud-bench-command-runner@sha256:ab69e3ff24584e268bfa92f44c5d71e680ce1780cc8a4a9a5ce1e60b3e4bf4e7
+ghcr.io/lmnaslimited/lenscloud-bench-command-runner:v0.1.4
+ghcr.io/lmnaslimited/lenscloud-bench-command-runner@sha256:eebfa0199c328207b14a949fa6232954a203a3937b1eed4930e9c3ec95b654d6
 ```
 
 Build and push summary:
@@ -157,7 +162,7 @@ Build and push summary:
 ```text
 docker build --platform linux/amd64: passed
 docker push: passed
-published digest: sha256:ab69e3ff24584e268bfa92f44c5d71e680ce1780cc8a4a9a5ce1e60b3e4bf4e7
+published digest: sha256:eebfa0199c328207b14a949fa6232954a203a3937b1eed4930e9c3ec95b654d6
 ```
 
 Container smoke summary:
@@ -203,7 +208,7 @@ Production runner positive live proof:
 script: scripts/60-verify-bench-command-production-runner.sh
 command: maintenance_mode.enable
 status: passed
-runner image: ghcr.io/lmnaslimited/lenscloud-bench-command-runner@sha256:ab69e3ff24584e268bfa92f44c5d71e680ce1780cc8a4a9a5ce1e60b3e4bf4e7
+runner image: ghcr.io/lmnaslimited/lenscloud-bench-command-runner@sha256:eebfa0199c328207b14a949fa6232954a203a3937b1eed4930e9c3ec95b654d6
 sanitized result summary: present
 negative non-runner image: denied
 ```
@@ -227,10 +232,11 @@ negative non-runner image: denied
 cleanup: no matching temporary resources remained after verifier exit
 ```
 
-Current `v0.1.2` verification is recorded in:
+Current real-site and remaining-family verification is recorded in:
 
 ```text
 docs/bench-command-real-site-path-evidence-20260629.md
+docs/bench-command-remaining-families-evidence-20260630.md
 ```
 
 Admission negative proof:
@@ -272,7 +278,7 @@ infrastructure Secrets and private keys
 
 ## Remaining Production Gaps
 
-- Backup storage/metadata contract.
+- Backup creation/storage/retention contract.
 - Restore signed runbook and destructive confirmation.
 - Bench Test and LATP production runner contracts.
 - NetworkPolicy/resource quotas for command Jobs.

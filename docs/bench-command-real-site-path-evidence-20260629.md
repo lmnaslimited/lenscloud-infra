@@ -80,8 +80,8 @@ BENCH_PATH/sites
 Published and admission-pinned image:
 
 ```text
-ghcr.io/lmnaslimited/lenscloud-bench-command-runner:v0.1.2
-ghcr.io/lmnaslimited/lenscloud-bench-command-runner@sha256:ab69e3ff24584e268bfa92f44c5d71e680ce1780cc8a4a9a5ce1e60b3e4bf4e7
+ghcr.io/lmnaslimited/lenscloud-bench-command-runner:v0.1.4
+ghcr.io/lmnaslimited/lenscloud-bench-command-runner@sha256:eebfa0199c328207b14a949fa6232954a203a3937b1eed4930e9c3ec95b654d6
 ```
 
 Admission policy:
@@ -119,7 +119,7 @@ Result:
 ```text
 Bench Command production runner verification passed.
 Runtime namespace: lenscloud-runtime-eu
-Runner image: ghcr.io/lmnaslimited/lenscloud-bench-command-runner@sha256:ab69e3ff24584e268bfa92f44c5d71e680ce1780cc8a4a9a5ce1e60b3e4bf4e7
+Runner image: ghcr.io/lmnaslimited/lenscloud-bench-command-runner@sha256:eebfa0199c328207b14a949fa6232954a203a3937b1eed4930e9c3ec95b654d6
 Positive command: maintenance_mode.enable
 Sanitized result summary: present
 Negative non-runner image: denied
@@ -206,7 +206,7 @@ Read:
 Update Platform Bench Command Job generation to use:
 
 - runner image:
-  ghcr.io/lmnaslimited/lenscloud-bench-command-runner@sha256:ab69e3ff24584e268bfa92f44c5d71e680ce1780cc8a4a9a5ce1e60b3e4bf4e7
+  ghcr.io/lmnaslimited/lenscloud-bench-command-runner@sha256:eebfa0199c328207b14a949fa6232954a203a3937b1eed4930e9c3ec95b654d6
 - Bench sites PVC mounted at:
   /home/frappe/frappe-bench/sites
 - BENCH_PATH=/home/frappe/frappe-bench
@@ -231,8 +231,12 @@ raw site_config.json content, or full environment dumps.
 
 ## Remaining Gaps
 
-- Backup storage/metadata contract.
+- Backup creation/storage/retention contract.
 - Restore runbook and destructive confirmation.
 - Bench Test trigger/status production suite contract.
 - LATP trigger/status production contract.
 - NetworkPolicy/resource quotas for command Jobs.
+
+Update: INF-017 completed metadata-only `backup.status` live verification on
+2026-06-30. See
+[bench-command-remaining-families-evidence-20260630.md](./bench-command-remaining-families-evidence-20260630.md).

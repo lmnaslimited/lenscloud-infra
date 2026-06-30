@@ -51,6 +51,7 @@ directly unless the command/key is explicitly known safe.
 | `site_config.get` key `client_script_enabled` | `Client script` | `boolean` | `On` / `Off` |
 | `site_config.get` key `allow_cors` | `CORS allowlist` | `origin-list` | safe origin list |
 | `cors.allowlist.get` | `CORS allowlist` | `origin-list` | safe origin list |
+| `backup.status` | `Backups` | `backup-status` | safe backup count/latest metadata |
 
 Boolean/flag rule:
 
@@ -87,8 +88,8 @@ Target/path failures return sanitized `phase`, `code`, and `summary` only.
 Published and admission-pinned image:
 
 ```text
-ghcr.io/lmnaslimited/lenscloud-bench-command-runner:v0.1.2
-ghcr.io/lmnaslimited/lenscloud-bench-command-runner@sha256:ab69e3ff24584e268bfa92f44c5d71e680ce1780cc8a4a9a5ce1e60b3e4bf4e7
+ghcr.io/lmnaslimited/lenscloud-bench-command-runner:v0.1.4
+ghcr.io/lmnaslimited/lenscloud-bench-command-runner@sha256:eebfa0199c328207b14a949fa6232954a203a3937b1eed4930e9c3ec95b654d6
 ```
 
 Admission policy:
@@ -130,7 +131,7 @@ Result:
 ```text
 Bench Command production runner verification passed.
 Runtime namespace: lenscloud-runtime-eu
-Runner image: ghcr.io/lmnaslimited/lenscloud-bench-command-runner@sha256:ab69e3ff24584e268bfa92f44c5d71e680ce1780cc8a4a9a5ce1e60b3e4bf4e7
+Runner image: ghcr.io/lmnaslimited/lenscloud-bench-command-runner@sha256:eebfa0199c328207b14a949fa6232954a203a3937b1eed4930e9c3ec95b654d6
 Positive command: maintenance_mode.enable
 Sanitized result summary: present
 Negative non-runner image: denied
@@ -197,7 +198,7 @@ Update Platform result rendering for Bench Command actions:
    - sensitive keys and runner-pending commands do not expose display values.
 
 Use runner image:
-ghcr.io/lmnaslimited/lenscloud-bench-command-runner@sha256:ab69e3ff24584e268bfa92f44c5d71e680ce1780cc8a4a9a5ce1e60b3e4bf4e7
+ghcr.io/lmnaslimited/lenscloud-bench-command-runner@sha256:eebfa0199c328207b14a949fa6232954a203a3937b1eed4930e9c3ec95b654d6
 
 Do not expose kubeconfig, tokens, Secrets, DB passwords, private keys, pod logs,
 raw site_config.json content, or full environment dumps.
@@ -205,8 +206,12 @@ raw site_config.json content, or full environment dumps.
 
 ## Remaining Gaps
 
-- Backup storage/metadata contract.
+- Backup creation contract.
 - Restore runbook and destructive confirmation.
 - Bench Test trigger/status production suite contract.
 - LATP trigger/status production contract.
 - NetworkPolicy/resource quotas for command Jobs.
+
+Update: INF-017 completed metadata-only `backup.status` live verification on
+2026-06-30. See
+[bench-command-remaining-families-evidence-20260630.md](./bench-command-remaining-families-evidence-20260630.md).

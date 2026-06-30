@@ -13,6 +13,7 @@ import os
 import re
 import sys
 import tempfile
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -42,7 +43,6 @@ COMMANDS = {
 
 RUNNER_PENDING = {
     "backup.create",
-    "backup.status",
     "restore.preview",
     "restore.execute",
     "restore.status",
@@ -244,22 +244,28 @@ def candidate_site_roots(site: str) -> list[tuple[str, Path]]:
     ]
 
 
-def site_config_path(site: str) -> tuple[Path, str]:
+def site_root_path(site: str) -> tuple[Path, str]:
     expected_root = SITES_PATH.resolve()
     matches: list[tuple[str, Path]] = []
     for layout, site_root in candidate_site_roots(site):
-        path = (site_root / "site_config.json").resolve()
-        if expected_root not in path.parents:
+        path = site_root.resolve()
+        if expected_root not in path.parents and path != expected_root:
             raise CommandError("TARGET_MISMATCH", "site path escapes bench sites directory")
-        if path.is_file():
+        if (path / "site_config.json").is_file():
             matches.append((layout, path))
     if len(matches) > 1:
         raise CommandError("TARGET_MISMATCH", "site_config.json matched multiple supported layouts")
     if not matches:
         raise CommandError("TARGET_NOT_FOUND", "site_config.json was not found")
     layout, path = matches[0]
-    if expected_root not in path.parents:
+    if expected_root not in path.parents and path != expected_root:
         raise CommandError("TARGET_MISMATCH", "site path escapes bench sites directory")
+    return path, layout
+
+
+def site_config_path(site: str) -> tuple[Path, str]:
+    site_root, layout = site_root_path(site)
+    path = (site_root / "site_config.json").resolve()
     return path, layout
 
 
@@ -414,9 +420,66 @@ def command_cors(command: str, target: dict[str, Any], args: dict[str, Any]) -> 
     )
 
 
+def backup_dir_for_site(site: str) -> tuple[Path, str]:
+    site_root, layout = site_root_path(site)
+    path = (site_root / "private" / "backups").resolve()
+    if site_root not in path.parents:
+        raise CommandError("TARGET_MISMATCH", "backup path escapes site directory")
+    return path, layout
+
+
+def backup_files(site: str) -> tuple[Path, str, list[dict[str, Any]]]:
+    backup_dir, layout = backup_dir_for_site(site)
+    if not backup_dir.exists():
+        return backup_dir, layout, []
+    if not backup_dir.is_dir():
+        raise CommandError("RUNNER_FAILED", "backup path is not a directory")
+    files = []
+    for path in sorted(backup_dir.iterdir(), key=lambda item: item.stat().st_mtime, reverse=True):
+        if not path.is_file():
+            continue
+        stat = path.stat()
+        files.append(
+            {
+                "name": path.name,
+                "sizeBytes": stat.st_size,
+                "modifiedAt": datetime.fromtimestamp(stat.st_mtime, timezone.utc).isoformat(),
+            }
+        )
+    return backup_dir, layout, files
+
+
+def command_backup(command: str, target: dict[str, Any], args: dict[str, Any]) -> dict[str, Any]:
+    site = str(target["site"])
+    _, layout, before = backup_files(site)
+
+    if command == "backup.status":
+        latest = before[0] if before else None
+        return result(
+            phase="Succeeded",
+            command=command,
+            target=target,
+            summary="Read backup status",
+            details={"layout": layout, "count": len(before), "latest": latest},
+            display={
+                "label": "Backups",
+                "value": f"{len(before)} available",
+                "kind": "backup-status",
+                "rawValue": {"count": len(before), "latest": latest},
+                "safe": True,
+            },
+        )
+
+    raise CommandError("COMMAND_UNSUPPORTED", "unsupported backup command", "Unsupported")
+
+
 def dispatch(command: str, target: dict[str, Any], args: dict[str, Any]) -> dict[str, Any]:
     if command in RUNNER_PENDING:
         raise CommandError("COMMAND_UNSUPPORTED", "command family is contracted but runner-pending", "Unsupported")
+    if command.startswith("backup."):
+        return command_backup(command, target, args)
+    if command.startswith("restore."):
+        raise CommandError("COMMAND_UNSUPPORTED", "restore command requires a finalized destructive runbook", "Unsupported")
     if command.startswith("site_config."):
         return command_site_config(command, target, args)
     if command.startswith("maintenance_mode."):

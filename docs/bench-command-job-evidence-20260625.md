@@ -83,7 +83,7 @@ Admission guardrails for Platform-created command Jobs:
 
 | Family | Commands | Current Status |
 | --- | --- | --- |
-| `backup` | `backup.create`, `backup.status` | Contracted, production runner pending |
+| `backup` | `backup.create`, `backup.status` | `backup.status` live-verified by INF-017; `backup.create` runner-pending |
 | `restore` | `restore.preview`, `restore.execute`, `restore.status` | Unsupported until restore runbook is finalized |
 | `maintenance_mode` | `maintenance_mode.enable`, `maintenance_mode.disable`, `maintenance_mode.status` | Contracted, production runner pending |
 | `developer_mode` | `developer_mode.enable`, `developer_mode.disable`, `developer_mode.status` | Contracted, production runner pending |
@@ -91,6 +91,11 @@ Admission guardrails for Platform-created command Jobs:
 | `cors` | `cors.allowlist.update`, `cors.allowlist.get` | Contracted where supported, production runner pending |
 | `bench_test` | `bench_test.trigger`, `bench_test.status` | Verification stub for `bench_test.status`; production runner pending |
 | `latp` | `latp.trigger`, `latp.status` | Contracted, production runner pending |
+
+2026-06-30 status update: INF-017 moved metadata-only `backup.status` to
+live-verified. `backup.create`, restore, Bench Test trigger, and LATP remain
+runner-pending. See
+[bench-command-remaining-families-evidence-20260630.md](./bench-command-remaining-families-evidence-20260630.md).
 
 Unsupported behavior:
 

@@ -84,9 +84,20 @@ run_command cors_get \
   "{\"apiVersion\":\"lenscloud.io/v1\",\"kind\":\"BenchCommand\",\"commandId\":\"local-5b\",\"command\":\"cors.allowlist.get\",${base_target},\"args\":{},\"timeoutSeconds\":60}" |
   grep -F '"display":{"kind":"origin-list","label":"CORS allowlist","rawValue":["https://admin.example.com","https://app.example.com"],"safe":true,"value":["https://admin.example.com","https://app.example.com"]}' >/dev/null
 
-run_command unsupported_backup \
-  "{\"apiVersion\":\"lenscloud.io/v1\",\"kind\":\"BenchCommand\",\"commandId\":\"local-6\",\"command\":\"backup.create\",${base_target},\"args\":{},\"timeoutSeconds\":60}" \
-  0 | grep '"phase":"Unsupported"' >/dev/null
+mkdir -p "$bench_path/sites/$site/private/backups"
+printf 'fake backup metadata only\n' >"$bench_path/sites/$site/private/backups/20260630_010203-runner-test-database.sql.gz"
+
+run_command backup_status \
+  "{\"apiVersion\":\"lenscloud.io/v1\",\"kind\":\"BenchCommand\",\"commandId\":\"local-6\",\"command\":\"backup.status\",${base_target},\"args\":{},\"timeoutSeconds\":60}" |
+  grep -F '"display":{"kind":"backup-status","label":"Backups"' >/dev/null
+
+run_command unsupported_backup_create \
+  "{\"apiVersion\":\"lenscloud.io/v1\",\"kind\":\"BenchCommand\",\"commandId\":\"local-6b\",\"command\":\"backup.create\",${base_target},\"args\":{},\"timeoutSeconds\":60}" \
+  0 | grep -F '"phase":"Unsupported"' >/dev/null
+
+run_command unsupported_restore_preview \
+  "{\"apiVersion\":\"lenscloud.io/v1\",\"kind\":\"BenchCommand\",\"commandId\":\"local-6c\",\"command\":\"restore.preview\",${base_target},\"args\":{\"backupId\":\"20260630_010203-runner-test-database.sql.gz\"},\"timeoutSeconds\":60}" \
+  0 | grep -F '"phase":"Unsupported"' >/dev/null
 
 run_command invalid_sensitive_key \
   "{\"apiVersion\":\"lenscloud.io/v1\",\"kind\":\"BenchCommand\",\"commandId\":\"local-7\",\"command\":\"site_config.get\",${base_target},\"args\":{\"key\":\"db_password\"},\"timeoutSeconds\":60}" \

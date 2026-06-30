@@ -91,12 +91,15 @@ Current implemented commands:
 - `site_config.get`
 - `cors.allowlist.update`
 - `cors.allowlist.get`
+- `backup.status`
+
+`backup.status` is metadata-only. It returns backup count/latest-file metadata
+from the approved Site backup directory and never returns backup file contents.
 
 Contracted but runner-pending commands return `Unsupported /
 COMMAND_UNSUPPORTED`:
 
 - `backup.create`
-- `backup.status`
 - `restore.preview`
 - `restore.execute`
 - `restore.status`
@@ -109,14 +112,14 @@ Build example:
 
 ```bash
 docker build \
-  -t ghcr.io/lmnaslimited/lenscloud-bench-command-runner:v0.1.2 \
+  -t ghcr.io/lmnaslimited/lenscloud-bench-command-runner:v0.1.4 \
   bench-command-runner
 ```
 
 Published image:
 
 ```text
-ghcr.io/lmnaslimited/lenscloud-bench-command-runner@sha256:ab69e3ff24584e268bfa92f44c5d71e680ce1780cc8a4a9a5ce1e60b3e4bf4e7
+ghcr.io/lmnaslimited/lenscloud-bench-command-runner@sha256:eebfa0199c328207b14a949fa6232954a203a3937b1eed4930e9c3ec95b654d6
 ```
 
 The live admission policy accepts this digest for production Bench Command Jobs.

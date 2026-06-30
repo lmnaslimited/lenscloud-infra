@@ -30,8 +30,8 @@ Blocked -> Later
 
 ## Active Gate
 
-Infra has completed the Bench Command sanitized result display contract gate
-for `INF-016`.
+Infra has completed the remaining Bench Command runner families gate for
+`INF-017`.
 
 The current Infra-to-Platform Bench Command state is:
 
@@ -49,6 +49,9 @@ The current Infra-to-Platform Bench Command state is:
   Operator `frappe-sites/<site>/site_config.json` PVC layout
 - result display contract: complete for supported read/status commands so
   Platform can render values such as `Maintenance mode: Off`
+- remaining runner families: metadata-only `backup.status` is live-verified;
+  `backup.create`, restore, Bench Test trigger, and LATP remain Unsupported
+  until their safety contracts are complete
 - supporting handoff: [platform-bench-command-handoff.md](./platform-bench-command-handoff.md)
 
 ## Backlog
@@ -71,6 +74,7 @@ The current Infra-to-Platform Bench Command state is:
 | INF-014 | Local Docker runtime | [local-docker-runtime.md](./local-docker-runtime.md) | TBD | TBD | TBD | Later |
 | INF-015 | Real Bench runner sites PVC path contract | Platform handoff `infra-handoff-real-bench-runner-site-config-path-20260629.md` | `bench-command-runner/`, `scripts/61-verify-real-bench-runner-site-path.sh` | [bench-command-real-site-path-evidence-20260629.md](./bench-command-real-site-path-evidence-20260629.md) | Platform should mount the Bench sites PVC at `/home/frappe/frappe-bench/sites`; runner handles `frappe-sites/<site>/site_config.json` | Complete |
 | INF-016 | Bench Command sanitized result display contract | Platform handoff `handoffs/infra/bench-command-result-display-contract-20260629.md` | `bench-command-runner/`, `scripts/59-test-bench-command-runner-local.sh` | [bench-command-result-display-evidence-20260629.md](./bench-command-result-display-evidence-20260629.md) | Platform should render top-level `display` only when `display.safe=true`; runner-pending families remain `Unsupported` | Complete |
+| INF-017 | Remaining Bench Command runner families | Platform handoff `handoffs/infra/bench-command-remaining-families-20260629.md` | `bench-command-runner/`, `scripts/62-verify-bench-command-remaining-families.sh` | [bench-command-remaining-families-evidence-20260630.md](./bench-command-remaining-families-evidence-20260630.md) | `backup.status` may be integrated; `backup.create`, restore, Bench Test trigger, and LATP remain Unsupported | Complete |
 
 ## Protected Baseline
 

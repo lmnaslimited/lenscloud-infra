@@ -88,12 +88,13 @@ bench-command-runner/
 The current runner image is published and admission-pinned:
 
 ```text
-ghcr.io/lmnaslimited/lenscloud-bench-command-runner@sha256:ab69e3ff24584e268bfa92f44c5d71e680ce1780cc8a4a9a5ce1e60b3e4bf4e7
+ghcr.io/lmnaslimited/lenscloud-bench-command-runner@sha256:eebfa0199c328207b14a949fa6232954a203a3937b1eed4930e9c3ec95b654d6
 ```
 
 Live positive proof for the runner capability passed on 2026-06-28 after the
-GHCR package was made publicly pullable by the EU worker. The current `v0.1.2`
-image with the display contract was live-verified on 2026-06-29.
+GHCR package was made publicly pullable by the EU worker. The current `v0.1.4`
+image with the display and metadata-only `backup.status` contracts was
+live-verified on 2026-06-30.
 
 Real Frappe Operator sites PVC proof passed on 2026-06-29 with
 `maintenance_mode.status` against:
@@ -197,7 +198,7 @@ spec:
       restartPolicy: Never
       containers:
         - name: bench-command
-          image: ghcr.io/lmnaslimited/lenscloud-bench-command-runner@sha256:ab69e3ff24584e268bfa92f44c5d71e680ce1780cc8a4a9a5ce1e60b3e4bf4e7
+          image: ghcr.io/lmnaslimited/lenscloud-bench-command-runner@sha256:eebfa0199c328207b14a949fa6232954a203a3937b1eed4930e9c3ec95b654d6
 ```
 
 The Job may read the request ConfigMap and non-secret ConfigMaps required for
@@ -383,7 +384,8 @@ Platform should normalize Job state to:
 
 | Family | Commands | Phase 1 Status | Notes |
 | --- | --- | --- | --- |
-| `backup` | `backup.create`, `backup.status` | Contracted, runner pending | Must return backup metadata only, not file contents or passwords |
+| `backup` | `backup.status` | Runner live-verified for metadata-only status | Returns backup count/latest metadata and safe `display`; never returns backup file contents |
+| `backup` | `backup.create` | Unsupported / runner-pending | Live attempt proved vanilla `bench backup` is not operator-layout safe yet; requires a separate backup execution contract |
 | `restore` | `restore.preview`, `restore.execute`, `restore.status` | Unsupported until restore runbook is finalized | Must require explicit destructive confirmation and backup identity |
 | `maintenance_mode` | `maintenance_mode.enable`, `maintenance_mode.disable`, `maintenance_mode.status` | Runner live-verified for `maintenance_mode.enable`; family ready for Platform integration and per-command acceptance | Uses approved site config key `maintenance_mode` |
 | `developer_mode` | `developer_mode.enable`, `developer_mode.disable`, `developer_mode.status` | Runner source/local verified; ready for Platform policy-gated integration and per-command acceptance | Prod policy should normally reject enable |
@@ -395,6 +397,32 @@ Platform should normalize Job state to:
 Known unsupported commands must return `Unsupported` with
 `COMMAND_UNSUPPORTED`; Platform should show that truthfully and not claim live
 runtime enforcement for that control.
+
+### Backup Status Display
+
+`backup.status` returns a safe display object:
+
+```json
+{
+  "phase": "Succeeded",
+  "command": "backup.status",
+  "summary": "Read backup status",
+  "display": {
+    "label": "Backups",
+    "value": "0 available",
+    "kind": "backup-status",
+    "rawValue": {
+      "count": 0,
+      "latest": null
+    },
+    "safe": true
+  }
+}
+```
+
+Platform may render the count/latest metadata. Platform must not expect or ask
+Infra to return backup file contents, database dumps, passwords, Secret values,
+or raw private files.
 
 ## RBAC Requirements
 
@@ -534,7 +562,7 @@ Runner image: published to GHCR and pinned by digest.
 Admission: live-applied and denies non-runner maintenance_mode images.
 Local container smoke: passed.
 Live positive runner Job: passed for maintenance_mode.enable.
-Current v0.1.2 runner image: live-verified on 2026-06-29.
+Current v0.1.4 runner image: live-verified on 2026-06-30.
 Cleanup: temporary runner Job, ConfigMaps, and Pod removed.
 ```
 
@@ -553,6 +581,9 @@ Canonical evidence:
 ```text
 docs/bench-command-job-evidence-20260625.md
 docs/bench-command-production-runner-evidence-20260627.md
+docs/bench-command-real-site-path-evidence-20260629.md
+docs/bench-command-result-display-evidence-20260629.md
+docs/bench-command-remaining-families-evidence-20260630.md
 ```
 
 ## Platform Agent Prompt
@@ -563,11 +594,11 @@ Work inside lenscloud-platform.
 Pull latest lenscloud-infra and start from:
 
 - lenscloud-infra/docs/infra-workitems.md
-- INF-010 Bench Command Job/API for Site Controls
+- INF-017 Remaining Bench Command runner families
 - lenscloud-infra/docs/platform-bench-command-handoff.md
-- lenscloud-infra/docs/bench-command-job-evidence-20260625.md
+- lenscloud-infra/docs/bench-command-remaining-families-evidence-20260630.md
 
-Implement Platform-side Site Control runtime enforcement against the Infra
+Update Platform-side Site Control runtime enforcement against the current Infra
 Bench Command Job/API contract.
 
 Platform responsibilities:
@@ -587,21 +618,22 @@ Platform responsibilities:
    pod logs, or full env dumps.
 10. Clean command Jobs and ConfigMaps after terminal state and evidence capture.
 
-Start with `bench_test.status` as the live positive contract path.
-
 Infra runner source now implements maintenance mode, developer mode, approved
-site_config keys, and CORS allowlist locally, and the image is published and
-admission-pinned. `maintenance_mode.enable` has passed live verification, so
-Platform may integrate implemented runner commands behind Site Control policy
-and per-command acceptance.
+site_config keys, CORS allowlist, and metadata-only `backup.status`. The image
+is published and admission-pinned. `maintenance_mode.enable`,
+`maintenance_mode.status`, and `backup.status` have passed live verification
+against the real Bench sites PVC.
 
-Backup, restore, Bench Test trigger, and LATP remain runner-pending or
-unsupported as documented.
+Platform may integrate `backup.status` as a read/status action using the safe
+top-level `display` object. Platform must continue to show `backup.create`,
+restore commands, `bench_test.trigger`, and LATP commands as Unsupported until
+Infra publishes a separate safe execution contract and live evidence.
 
 Return:
 - Platform files changed;
 - request/response examples generated by Platform;
 - action log evidence;
+- `backup.status` display evidence;
 - unsupported-command behavior;
 - cleanup proof;
 - remaining runner/API gaps.
