@@ -30,8 +30,8 @@ Blocked -> Later
 
 ## Active Gate
 
-Infra has completed the remaining Bench Command runner families gate for
-`INF-017`.
+Infra has completed the pre-launch Platform E2E cleanup PVC blocker for
+`INF-018`.
 
 The current Infra-to-Platform Bench Command state is:
 
@@ -52,6 +52,9 @@ The current Infra-to-Platform Bench Command state is:
 - remaining runner families: metadata-only `backup.status` is live-verified;
   `backup.create`, restore, Bench Test trigger, and LATP remain Unsupported
   until their safety contracts are complete
+- launch cleanup blocker: resolved by deleting only exact orphaned terminal
+  Bench Command pods that still referenced the old sites PVC; no finalizers were
+  manually removed
 - supporting handoff: [platform-bench-command-handoff.md](./platform-bench-command-handoff.md)
 
 ## Backlog
@@ -75,6 +78,7 @@ The current Infra-to-Platform Bench Command state is:
 | INF-015 | Real Bench runner sites PVC path contract | Platform handoff `infra-handoff-real-bench-runner-site-config-path-20260629.md` | `bench-command-runner/`, `scripts/61-verify-real-bench-runner-site-path.sh` | [bench-command-real-site-path-evidence-20260629.md](./bench-command-real-site-path-evidence-20260629.md) | Platform should mount the Bench sites PVC at `/home/frappe/frappe-bench/sites`; runner handles `frappe-sites/<site>/site_config.json` | Complete |
 | INF-016 | Bench Command sanitized result display contract | Platform handoff `handoffs/infra/bench-command-result-display-contract-20260629.md` | `bench-command-runner/`, `scripts/59-test-bench-command-runner-local.sh` | [bench-command-result-display-evidence-20260629.md](./bench-command-result-display-evidence-20260629.md) | Platform should render top-level `display` only when `display.safe=true`; runner-pending families remain `Unsupported` | Complete |
 | INF-017 | Remaining Bench Command runner families | Platform handoff `handoffs/infra/bench-command-remaining-families-20260629.md` | `bench-command-runner/`, `scripts/62-verify-bench-command-remaining-families.sh` | [bench-command-remaining-families-evidence-20260630.md](./bench-command-remaining-families-evidence-20260630.md) | `backup.status` may be integrated; `backup.create`, restore, Bench Test trigger, and LATP remain Unsupported | Complete |
+| INF-018 | Pre-launch E2E cleanup PVC blocker | Platform handoff `handoffs/infra/e2e-cleanup-pvc-blocker-20260702.md` | admin kubeconfig inspection and scoped PVC cleanup decision | [e2e-cleanup-pvc-blocker-evidence-20260702.md](./e2e-cleanup-pvc-blocker-evidence-20260702.md) | [platform-e2e-cleanup-pvc-blocker-handoff-20260702.md](./platform-e2e-cleanup-pvc-blocker-handoff-20260702.md) | Complete |
 
 ## Protected Baseline
 
@@ -94,3 +98,6 @@ Use [platform-bench-command-handoff.md](./platform-bench-command-handoff.md)
 for the next Platform Codex handoff. Platform may integrate supported runner
 commands behind Site Control policy and must keep runner-pending families marked
 `Unsupported`.
+
+For the pre-launch E2E cleanup blocker, use
+[platform-e2e-cleanup-pvc-blocker-handoff-20260702.md](./platform-e2e-cleanup-pvc-blocker-handoff-20260702.md).
