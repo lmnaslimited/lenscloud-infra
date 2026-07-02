@@ -55,6 +55,7 @@ Allowed in the approved namespace:
 - MariaDB CR get/list/watch/create/update/patch/delete
 - FrappeBench and FrappeSite get/list/watch/create/update/patch/delete
 - Pods, Services, PVCs, Jobs, Ingresses, and Events read access
+- terminal Platform-labelled Bench Command Pod delete access
 - labelled owned Job and PVC delete access
 - runtime Secret get/create/update/patch/delete
 
@@ -67,6 +68,18 @@ Denied:
 - default `frappe-mariadb` mutation
 - unapproved namespace access
 - unrestricted Secret listing
+- pod log access
+
+Bench Command Pod deletes are allowed by RBAC in approved runtime namespaces
+but constrained by admission. Platform can delete only terminal Pods labelled:
+
+```text
+lenscloud.io/managed-by=platform
+lenscloud.io/resource-kind=bench-command
+```
+
+Platform cannot delete running/non-terminal Pods, unlabelled Pods, or Pods in
+`default` and other unapproved namespaces.
 
 Platform has read-only namespace discovery:
 
@@ -167,6 +180,14 @@ The baseline verifier can also target the namespace:
 RUNTIME_NAMESPACE=lenscloud-enterprise-acme \
 PLATFORM_KUBECONFIG=.artifacts/lenscloud-eu-test.kubeconfig \
 ./scripts/54-verify-platform-access.sh
+```
+
+Bench Command terminal pod cleanup can be verified against the namespace:
+
+```bash
+RUNTIME_NAMESPACE=lenscloud-enterprise-acme \
+PLATFORM_KUBECONFIG=.artifacts/lenscloud-eu-test.kubeconfig \
+./scripts/63-verify-bench-command-pod-cleanup-rbac.sh
 ```
 
 ## Platform Sync Contract

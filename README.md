@@ -82,6 +82,8 @@ Supporting SOPs:
 - [docs/platform-bench-command-handoff.md](./docs/platform-bench-command-handoff.md)
 - [docs/bench-command-job-evidence-20260625.md](./docs/bench-command-job-evidence-20260625.md)
 - [docs/bench-command-production-runner-evidence-20260627.md](./docs/bench-command-production-runner-evidence-20260627.md)
+- [docs/bench-command-pod-cleanup-rbac-evidence-20260702.md](./docs/bench-command-pod-cleanup-rbac-evidence-20260702.md)
+- [docs/platform-bench-command-pod-cleanup-rbac-handoff-20260702.md](./docs/platform-bench-command-pod-cleanup-rbac-handoff-20260702.md)
 - [docs/documentation-governance-agent.md](./docs/documentation-governance-agent.md)
 - [docs/platform-runtime-lifecycle-evidence-20260608.md](./docs/platform-runtime-lifecycle-evidence-20260608.md)
 - [docs/platform-agent-runtime-lifecycle-prompt.md](./docs/platform-agent-runtime-lifecycle-prompt.md)

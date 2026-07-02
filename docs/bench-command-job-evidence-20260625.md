@@ -97,6 +97,14 @@ live-verified. `backup.create`, restore, Bench Test trigger, and LATP remain
 runner-pending. See
 [bench-command-remaining-families-evidence-20260630.md](./bench-command-remaining-families-evidence-20260630.md).
 
+2026-07-02 status update: INF-019 added live-verified cleanup for terminal
+Platform-labelled Bench Command Pods. Platform can delete only terminal Pods
+labelled `lenscloud.io/managed-by=platform` and
+`lenscloud.io/resource-kind=bench-command` in approved runtime namespaces. Pod
+logs, unlabelled/running Pod deletion, default namespace cleanup, and Secret
+listing remain denied. See
+[bench-command-pod-cleanup-rbac-evidence-20260702.md](./bench-command-pod-cleanup-rbac-evidence-20260702.md).
+
 Unsupported behavior:
 
 - Known but unavailable commands return `Unsupported` with

@@ -30,8 +30,8 @@ Blocked -> Later
 
 ## Active Gate
 
-Infra has completed the pre-launch Platform E2E cleanup PVC blocker for
-`INF-018`.
+Infra has completed the Bench Command terminal pod cleanup RBAC/admission fix
+for `INF-019`.
 
 The current Infra-to-Platform Bench Command state is:
 
@@ -55,6 +55,10 @@ The current Infra-to-Platform Bench Command state is:
 - launch cleanup blocker: resolved by deleting only exact orphaned terminal
   Bench Command pods that still referenced the old sites PVC; no finalizers were
   manually removed
+- terminal Bench Command pod cleanup: Platform needs narrow permission to delete
+  only terminal Platform-labelled Bench Command pods in approved runtime
+  namespaces so reset-clean validation does not require Infra/manual cleanup;
+  live verification passed
 - supporting handoff: [platform-bench-command-handoff.md](./platform-bench-command-handoff.md)
 
 ## Backlog
@@ -79,6 +83,7 @@ The current Infra-to-Platform Bench Command state is:
 | INF-016 | Bench Command sanitized result display contract | Platform handoff `handoffs/infra/bench-command-result-display-contract-20260629.md` | `bench-command-runner/`, `scripts/59-test-bench-command-runner-local.sh` | [bench-command-result-display-evidence-20260629.md](./bench-command-result-display-evidence-20260629.md) | Platform should render top-level `display` only when `display.safe=true`; runner-pending families remain `Unsupported` | Complete |
 | INF-017 | Remaining Bench Command runner families | Platform handoff `handoffs/infra/bench-command-remaining-families-20260629.md` | `bench-command-runner/`, `scripts/62-verify-bench-command-remaining-families.sh` | [bench-command-remaining-families-evidence-20260630.md](./bench-command-remaining-families-evidence-20260630.md) | `backup.status` may be integrated; `backup.create`, restore, Bench Test trigger, and LATP remain Unsupported | Complete |
 | INF-018 | Pre-launch E2E cleanup PVC blocker | Platform handoff `handoffs/infra/e2e-cleanup-pvc-blocker-20260702.md` | admin kubeconfig inspection and scoped PVC cleanup decision | [e2e-cleanup-pvc-blocker-evidence-20260702.md](./e2e-cleanup-pvc-blocker-evidence-20260702.md) | [platform-e2e-cleanup-pvc-blocker-handoff-20260702.md](./platform-e2e-cleanup-pvc-blocker-handoff-20260702.md) | Complete |
+| INF-019 | Bench Command terminal pod cleanup RBAC | Platform handoff `handoffs/infra/e2e-bench-command-pod-cleanup-rbac-20260702.md` | `manifests/access/lenscloud-platform-rbac.yaml`, `scripts/63-verify-bench-command-pod-cleanup-rbac.sh` | [bench-command-pod-cleanup-rbac-evidence-20260702.md](./bench-command-pod-cleanup-rbac-evidence-20260702.md) | [platform-bench-command-pod-cleanup-rbac-handoff-20260702.md](./platform-bench-command-pod-cleanup-rbac-handoff-20260702.md) | Complete |
 
 ## Protected Baseline
 
@@ -101,3 +106,6 @@ commands behind Site Control policy and must keep runner-pending families marked
 
 For the pre-launch E2E cleanup blocker, use
 [platform-e2e-cleanup-pvc-blocker-handoff-20260702.md](./platform-e2e-cleanup-pvc-blocker-handoff-20260702.md).
+
+For Bench Command terminal pod cleanup, use
+[platform-bench-command-pod-cleanup-rbac-handoff-20260702.md](./platform-bench-command-pod-cleanup-rbac-handoff-20260702.md).

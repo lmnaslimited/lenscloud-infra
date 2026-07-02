@@ -22,6 +22,8 @@ minimum permissions required to:
 - get, list, and watch related Pods, Services, PVCs, Events, Jobs, and Ingresses
 - create, read, and delete approved Bench Command Jobs and request ConfigMaps in
   the controlled runtime namespace for Site Control enforcement
+- delete only terminal Platform-labelled Bench Command Pods in approved runtime
+  namespaces after sanitized result capture
 - create, update, and delete only runtime Secrets that the approved
   provisioning workflow owns
 - delete labelled owned Jobs and PVCs when operator cleanup requires it
@@ -92,9 +94,13 @@ adds:
   devcontainer
 - runtime delete rights for MariaDB, FrappeBench, and FrappeSite
 - Bench Command Job/API rights for approved Site Control command requests
-- delete rights for labelled owned Jobs, PVCs, and Secrets
+- delete rights for labelled owned Jobs, PVCs, Secrets, and terminal
+  Platform-labelled Bench Command Pods
 - an admission guard requiring `lenscloud.io/managed-by=platform` for direct
   deletes by the Platform identity
+- a dedicated admission guard requiring Bench Command Pod deletes to target
+  terminal Pods labelled `lenscloud.io/managed-by=platform` and
+  `lenscloud.io/resource-kind=bench-command`
 - read-only namespace discovery for approved Runtime Namespace sync
 - read-only access to the protected `default` MariaDB namespace
 - prohibited Node, CRD, namespace, operator, and unrelated Secret permissions

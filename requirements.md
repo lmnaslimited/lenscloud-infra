@@ -64,6 +64,10 @@ Provision and bootstrap the Kubernetes substrate that LensCloud Platform will ma
   Site Control runtime enforcement. The contract must stay namespace-scoped,
   use an allowlist, validate typed arguments and target Bench/Site identity,
   sanitize status/results, and avoid invented FrappeSite CRD fields.
+- Permit Platform to clean up only terminal Platform-labelled Bench Command Pods
+  in approved runtime namespaces after sanitized result capture, while denying
+  pod logs, unlabelled/running Pod deletion, default namespace cleanup, and
+  infrastructure access.
 
 ## Requirement Tracking Process
 

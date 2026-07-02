@@ -167,6 +167,7 @@ rules:
     verbs:
       - list
       - watch
+      - delete
   - apiGroups:
       - ""
     resources:

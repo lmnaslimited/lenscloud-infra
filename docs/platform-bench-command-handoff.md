@@ -431,12 +431,15 @@ In approved runtime namespaces, Platform can:
 - create/get/list/watch/delete Jobs;
 - create/get/list/watch/update/patch/delete ConfigMaps;
 - list/watch Pods for status inspection;
+- delete terminal Platform-labelled Bench Command Pods after result capture;
 - get/list/watch Services, PVCs, Events, and Ingresses.
 
 Platform cannot:
 
 - list Secrets;
 - get individual Pods or read pod logs;
+- delete running/non-terminal Pods;
+- delete unlabelled Pods;
 - create Jobs or ConfigMaps in `default`;
 - mutate `default/frappe-mariadb`;
 - mutate namespaces, CRDs, Nodes, operators, Traefik, TLS, or storage classes;
@@ -444,8 +447,23 @@ Platform cannot:
 
 ## Cleanup Behavior
 
-Platform should delete command Jobs and request ConfigMaps after terminal state
-and evidence capture.
+Platform should delete command Jobs, request ConfigMaps, and terminal command
+Pods after terminal state and evidence capture.
+
+Pod cleanup contract:
+
+- only after sanitized result capture;
+- only in approved runtime namespaces;
+- only Pods labelled `lenscloud.io/managed-by=platform`;
+- only Pods labelled `lenscloud.io/resource-kind=bench-command`;
+- only terminal Pods with phase `Succeeded` or `Failed`;
+- no pod log reads;
+- no Secret reads/lists;
+- no default namespace cleanup.
+
+The terminal Pod cleanup permission exists to prevent completed Bench Command
+Pods from holding a Bench sites PVC through `kubernetes.io/pvc-protection`
+after the owning Bench is deleted.
 
 Infra verification uses only `run-YYYYMMDD-HHMM-*` resources and cleans them
 with manager credentials on exit if needed.
@@ -541,6 +559,7 @@ scripts/60-verify-bench-command-production-runner.sh
 
 Script number `56` is already used by Runtime Namespace registration, so the
 Bench Command verifier uses `58`.
+Terminal Pod cleanup verifier uses `63`.
 
 Live verification passed on 2026-06-25. Expected/current summary:
 

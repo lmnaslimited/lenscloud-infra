@@ -26,6 +26,7 @@ cd /root/lenscloud-infra
 ./scripts/53-generate-platform-kubeconfig.sh
 ./scripts/54-verify-platform-access.sh
 ./scripts/55-verify-platform-lifecycle.sh
+./scripts/63-verify-bench-command-pod-cleanup-rbac.sh
 ```
 
 The service account can:
@@ -36,6 +37,8 @@ The service account can:
 - delete labelled Platform-owned MariaDB, FrappeBench, and FrappeSite
   resources in `lenscloud-runtime-eu`;
 - read runtime Pods, Services, PVCs, Events, Jobs, and Ingresses;
+- delete only terminal Platform-labelled Bench Command Pods in approved runtime
+  namespaces after sanitized result capture;
 - get, create, update, and delete owned Site/admin or database bootstrap
   Secrets only in
   `lenscloud-runtime-eu`;
@@ -43,8 +46,11 @@ The service account can:
   `get/list/watch`.
 
 It cannot mutate `default/frappe-mariadb`, Nodes, namespaces, CRDs, operators,
-system deployments, or infrastructure Secrets. Direct runtime deletes are
-rejected unless the resource has `lenscloud.io/managed-by=platform`.
+system deployments, read pod logs, or access infrastructure Secrets. Direct
+runtime deletes are rejected unless the resource has
+`lenscloud.io/managed-by=platform`. Bench Command Pod deletes have an
+additional admission guard: the Pod must be terminal and labelled
+`lenscloud.io/resource-kind=bench-command`.
 
 Additional customer or enterprise runtime namespaces are registered after the
 baseline access install:
@@ -177,6 +183,10 @@ done
 kubectl delete validatingadmissionpolicybinding \
   lenscloud-platform-owned-delete
 kubectl delete validatingadmissionpolicy lenscloud-platform-owned-delete
+kubectl delete validatingadmissionpolicybinding \
+  lenscloud-platform-bench-command-pod-delete
+kubectl delete validatingadmissionpolicy \
+  lenscloud-platform-bench-command-pod-delete
 ```
 
 Remove the `lenscloud-platform-api` firewall rule if the integration is no
