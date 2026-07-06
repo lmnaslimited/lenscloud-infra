@@ -64,13 +64,13 @@ Bench command runner local verification passed.
 Tag:
 
 ```text
-ghcr.io/lmnaslimited/lenscloud-bench-command-runner:v0.1.6
+ghcr.io/lmnaslimited/lenscloud-bench-command-runner:v0.1.7
 ```
 
 Digest:
 
 ```text
-ghcr.io/lmnaslimited/lenscloud-bench-command-runner@sha256:b209598b8252e6eb0f5d65a4783e597cb565ef575e24632374f18b34473f398a
+ghcr.io/lmnaslimited/lenscloud-bench-command-runner@sha256:31e0aadf2eb50f068c3df9a98f288d2c7aac760d9349d04954880706f859d62b
 ```
 
 Covered locally:
@@ -87,14 +87,14 @@ Covered locally:
 
 `manifests/access/lenscloud-platform-rbac.yaml` now includes the
 `site_setup` Bench Command family in the admission allowlist and pins the
-`v0.1.6` runner digest above.
+`v0.1.7` runner digest above.
 
 ## Live Verification Command
 
 After publishing the new runner image and pinning the digest in admission, run:
 
 ```bash
-RUNNER_IMAGE='ghcr.io/lmnaslimited/lenscloud-bench-command-runner@sha256:b209598b8252e6eb0f5d65a4783e597cb565ef575e24632374f18b34473f398a' \
+RUNNER_IMAGE='ghcr.io/lmnaslimited/lenscloud-bench-command-runner@sha256:31e0aadf2eb50f068c3df9a98f288d2c7aac760d9349d04954880706f859d62b' \
 REAL_BENCH='<platform-managed-bench>' \
 REAL_SITE='<platform-managed-site.cloud.lmnaslens.com>' \
 REAL_SITES_PVC='<platform-managed-bench-sites-pvc>' \

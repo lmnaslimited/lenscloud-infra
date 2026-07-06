@@ -327,9 +327,19 @@ def prepared_frappe_sites_path(site: str) -> Iterator[Path]:
     with tempfile.TemporaryDirectory(prefix="lenscloud-sites-") as temp_name:
         temp_sites = Path(temp_name)
         for metadata_name in ("common_site_config.json", "apps.txt", "apps.json"):
-            metadata_path = SITES_PATH / metadata_name
-            if metadata_path.exists():
-                os.symlink(metadata_path.resolve(), temp_sites / metadata_name)
+            for metadata_path in (SITES_PATH / metadata_name, BENCH_PATH / "sites" / metadata_name):
+                if metadata_path.exists():
+                    os.symlink(metadata_path.resolve(), temp_sites / metadata_name)
+                    break
+        if not (temp_sites / "apps.txt").exists():
+            apps_root = BENCH_PATH / "apps"
+            app_names = sorted(
+                item.name
+                for item in apps_root.iterdir()
+                if item.is_dir() and not item.name.startswith(".")
+            ) if apps_root.is_dir() else []
+            if app_names:
+                (temp_sites / "apps.txt").write_text("\n".join(app_names) + "\n", encoding="utf-8")
         os.symlink(site_root.resolve(), temp_sites / site)
         yield temp_sites
 
@@ -434,6 +444,8 @@ def run_frappe_setup(site: str, operation: str, args: dict[str, Any], timeout: i
     Path("/home/frappe/logs").mkdir(parents=True, exist_ok=True)
 
     with prepared_frappe_sites_path(site) as temp_sites:
+        env = dict(os.environ)
+        env["FRAPPE_STREAM_LOGGING"] = "1"
         try:
             completed = subprocess.run(
                 [str(BENCH_PYTHON), "-c", FRAPPE_SETUP_SCRIPT, site, str(temp_sites), operation, str(timeout)],
@@ -442,6 +454,7 @@ def run_frappe_setup(site: str, operation: str, args: dict[str, Any], timeout: i
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 cwd=str(BENCH_PATH),
+                env=env,
                 timeout=timeout + 15,
                 check=False,
             )

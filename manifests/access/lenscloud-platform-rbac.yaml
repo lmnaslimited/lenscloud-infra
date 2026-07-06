@@ -375,7 +375,7 @@ spec:
           || object.spec.template.spec.volumes.all(volume, !has(volume.secret)))
         && object.spec.template.spec.containers.all(container,
           (
-            container.image == 'ghcr.io/lmnaslimited/lenscloud-bench-command-runner@sha256:b209598b8252e6eb0f5d65a4783e597cb565ef575e24632374f18b34473f398a'
+            container.image == 'ghcr.io/lmnaslimited/lenscloud-bench-command-runner@sha256:31e0aadf2eb50f068c3df9a98f288d2c7aac760d9349d04954880706f859d62b'
             || (
               object.metadata.annotations['lenscloud.io/bench-command-family'] == 'bench_test'
               && 'lenscloud.io/bench-command' in object.metadata.annotations
