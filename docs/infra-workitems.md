@@ -30,8 +30,9 @@ Blocked -> Later
 
 ## Active Gate
 
-Infra has completed the Bench Command terminal pod cleanup RBAC/admission fix
-for `INF-019`.
+Infra has documented the CUA Site bootstrap and SSO runner work breakdown as
+`INF-020` through `INF-024`. No CUA runner code, RBAC, image build, or cluster
+mutation is active until the LensPure branding/bootstrap image gate is passed.
 
 The current Infra-to-Platform Bench Command state is:
 
@@ -59,6 +60,10 @@ The current Infra-to-Platform Bench Command state is:
   only terminal Platform-labelled Bench Command pods in approved runtime
   namespaces so reset-clean validation does not require Infra/manual cleanup;
   live verification passed
+- CUA Site bootstrap and SSO: planned through the Bench Command pattern; all
+  CUA commands remain `Unsupported` until a new LensPure image includes the
+  branding/bootstrap app and Infra live-verifies `site_setup.status` and
+  `site_setup.complete`
 - supporting handoff: [platform-bench-command-handoff.md](./platform-bench-command-handoff.md)
 
 ## Backlog
@@ -84,6 +89,11 @@ The current Infra-to-Platform Bench Command state is:
 | INF-017 | Remaining Bench Command runner families | Platform handoff `handoffs/infra/bench-command-remaining-families-20260629.md` | `bench-command-runner/`, `scripts/62-verify-bench-command-remaining-families.sh` | [bench-command-remaining-families-evidence-20260630.md](./bench-command-remaining-families-evidence-20260630.md) | `backup.status` may be integrated; `backup.create`, restore, Bench Test trigger, and LATP remain Unsupported | Complete |
 | INF-018 | Pre-launch E2E cleanup PVC blocker | Platform handoff `handoffs/infra/e2e-cleanup-pvc-blocker-20260702.md` | admin kubeconfig inspection and scoped PVC cleanup decision | [e2e-cleanup-pvc-blocker-evidence-20260702.md](./e2e-cleanup-pvc-blocker-evidence-20260702.md) | [platform-e2e-cleanup-pvc-blocker-handoff-20260702.md](./platform-e2e-cleanup-pvc-blocker-handoff-20260702.md) | Complete |
 | INF-019 | Bench Command terminal pod cleanup RBAC | Platform handoff `handoffs/infra/e2e-bench-command-pod-cleanup-rbac-20260702.md` | `manifests/access/lenscloud-platform-rbac.yaml`, `scripts/63-verify-bench-command-pod-cleanup-rbac.sh` | [bench-command-pod-cleanup-rbac-evidence-20260702.md](./bench-command-pod-cleanup-rbac-evidence-20260702.md) | [platform-bench-command-pod-cleanup-rbac-handoff-20260702.md](./platform-bench-command-pod-cleanup-rbac-handoff-20260702.md) | Complete |
+| INF-020 | CUA image readiness gate | Platform handoff `handoffs/infra/cua-site-bootstrap-sso-runner-20260703.md` | [cua-site-bootstrap-sso-runner-contract.md](./cua-site-bootstrap-sso-runner-contract.md), [cua-site-bootstrap-sso-implementation-prompt-20260706.md](./cua-site-bootstrap-sso-implementation-prompt-20260706.md) | TBD: `docs/cua-image-readiness-evidence-<date>.md` | Platform waits for image tag/digest and branding setup method proof | Planned |
+| INF-021 | CUA setup wizard runner gate | Platform handoff `handoffs/infra/cua-site-bootstrap-sso-runner-20260703.md` | [cua-site-bootstrap-sso-runner-contract.md](./cua-site-bootstrap-sso-runner-contract.md), [cua-site-bootstrap-sso-implementation-prompt-20260706.md](./cua-site-bootstrap-sso-implementation-prompt-20260706.md) | TBD: `docs/cua-site-setup-runner-evidence-<date>.md` | Platform may use `site_setup.status` and `site_setup.complete` only after live proof | Blocked |
+| INF-022 | CUA OAuth runner gate | Platform handoff `handoffs/infra/cua-site-bootstrap-sso-runner-20260703.md` | [cua-site-bootstrap-sso-runner-contract.md](./cua-site-bootstrap-sso-runner-contract.md), [cua-site-bootstrap-sso-implementation-prompt-20260706.md](./cua-site-bootstrap-sso-implementation-prompt-20260706.md) | TBD: `docs/cua-oauth-runner-evidence-<date>.md` | OAuth commands remain `Unsupported` until `INF-020` and `INF-021` complete | Blocked |
+| INF-023 | CUA user/access runner gate | Platform handoff `handoffs/infra/cua-site-bootstrap-sso-runner-20260703.md` | [cua-site-bootstrap-sso-runner-contract.md](./cua-site-bootstrap-sso-runner-contract.md), [cua-site-bootstrap-sso-implementation-prompt-20260706.md](./cua-site-bootstrap-sso-implementation-prompt-20260706.md) | TBD: `docs/cua-user-access-runner-evidence-<date>.md` | User/access commands remain `Unsupported` until `INF-020` and `INF-021` complete | Blocked |
+| INF-024 | CUA end-to-end runner handoff | Platform handoff `handoffs/infra/cua-site-bootstrap-sso-runner-20260703.md` | [cua-site-bootstrap-sso-runner-contract.md](./cua-site-bootstrap-sso-runner-contract.md), [cua-site-bootstrap-sso-implementation-prompt-20260706.md](./cua-site-bootstrap-sso-implementation-prompt-20260706.md) | TBD: `docs/cua-runner-e2e-handoff-evidence-<date>.md` | Full Platform handoff after `INF-020` through `INF-023` are verified | Blocked |
 
 ## Protected Baseline
 
@@ -109,3 +119,6 @@ For the pre-launch E2E cleanup blocker, use
 
 For Bench Command terminal pod cleanup, use
 [platform-bench-command-pod-cleanup-rbac-handoff-20260702.md](./platform-bench-command-pod-cleanup-rbac-handoff-20260702.md).
+
+For the next CUA Infra implementation session, use
+[cua-site-bootstrap-sso-implementation-prompt-20260706.md](./cua-site-bootstrap-sso-implementation-prompt-20260706.md).

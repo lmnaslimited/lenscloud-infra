@@ -64,6 +64,12 @@ Provision and bootstrap the Kubernetes substrate that LensCloud Platform will ma
   Site Control runtime enforcement. The contract must stay namespace-scoped,
   use an allowlist, validate typed arguments and target Bench/Site identity,
   sanitize status/results, and avoid invented FrappeSite CRD fields.
+- Provide Central User Access Site bootstrap and SSO support through the same
+  Bench Command pattern. Setup wizard support must be proven first through
+  `site_setup.status` and `site_setup.complete` on a LensPure image that
+  includes the branding/bootstrap app. OAuth and user/access commands remain
+  blocked until setup proof is complete and must prefer standard Frappe APIs
+  before expanding the branding app.
 - Permit Platform to clean up only terminal Platform-labelled Bench Command Pods
   in approved runtime namespaces after sanitized result capture, while denying
   pod logs, unlabelled/running Pod deletion, default namespace cleanup, and

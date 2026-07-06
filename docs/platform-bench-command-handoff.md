@@ -398,6 +398,47 @@ Known unsupported commands must return `Unsupported` with
 `COMMAND_UNSUPPORTED`; Platform should show that truthfully and not claim live
 runtime enforcement for that control.
 
+## CUA Site Bootstrap And SSO Commands
+
+CUA Site bootstrap and SSO commands are planned under the same Bench Command
+Job/API pattern, but they are not supported yet.
+
+Canonical Infra gates:
+
+- `INF-020` CUA image readiness gate
+- `INF-021` CUA setup wizard runner gate
+- `INF-022` CUA OAuth runner gate
+- `INF-023` CUA user/access runner gate
+- `INF-024` CUA end-to-end runner handoff
+
+Contract and next implementation prompt:
+
+- [cua-site-bootstrap-sso-runner-contract.md](./cua-site-bootstrap-sso-runner-contract.md)
+- [cua-site-bootstrap-sso-implementation-prompt-20260706.md](./cua-site-bootstrap-sso-implementation-prompt-20260706.md)
+
+Planned CUA command families:
+
+| Family | Commands | Current status | Gate |
+| --- | --- | --- | --- |
+| `site_setup` | `site_setup.status`, `site_setup.complete` | Unsupported / blocked | Requires new LensPure image with branding/bootstrap setup methods and live `INF-021` proof |
+| `oauth` | `oauth.status`, `oauth.configure` | Unsupported / blocked | Requires `INF-020` and `INF-021`; use standard Frappe APIs first |
+| `user` | `user.ensure`, `user.disable`, `user.roles.set` | Unsupported / blocked | Requires `INF-020` and `INF-021`; use standard Frappe APIs first |
+| `site_access` | `site_access.status` | Unsupported / blocked | Requires `INF-020` and `INF-021`; use standard Frappe APIs first |
+
+The minimum branding/bootstrap app contract for the next LensPure image is:
+
+```text
+lenscloud_branding.bootstrap.status
+lenscloud_branding.bootstrap.complete_setup
+```
+
+OAuth and user/access work should use standard Frappe APIs or bench-executed
+standard Frappe methods first. Expand the branding app for those areas only if
+standard APIs prove insufficient.
+
+Until the relevant INF gate is complete, the runner must return
+`Unsupported` with `COMMAND_UNSUPPORTED` for CUA commands.
+
 ### Backup Status Display
 
 `backup.status` returns a safe display object:
