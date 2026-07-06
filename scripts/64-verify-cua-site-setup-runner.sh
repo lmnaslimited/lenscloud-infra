@@ -160,14 +160,7 @@ run_and_wait() {
   termination_message "$job"
 }
 
-setup_args='{
-  "language": "English",
-  "email": "first.user@example.com",
-  "full_name": "First User",
-  "country": "United States",
-  "timezone": "America/New_York",
-  "currency": "USD"
-}'
+setup_args='{"language":"English","email":"first.user@example.com","full_name":"First User","country":"United States","timezone":"America/New_York","currency":"USD"}'
 
 status_before="$(run_and_wait status-before site_setup.status '{}' true)"
 if [[ "$status_before" != *'"phase":"Succeeded"'* || "$status_before" != *'"command":"site_setup.status"'* ]]; then
