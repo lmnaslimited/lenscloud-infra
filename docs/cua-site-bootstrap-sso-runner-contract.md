@@ -4,8 +4,8 @@
 
 This contract is traceable through `docs/infra-workitems.md`:
 
-- `INF-020` CUA image readiness gate: Planned
-- `INF-021` CUA setup wizard runner gate: Blocked
+- `INF-020` CUA native setup API readiness gate: Complete
+- `INF-021` CUA setup wizard runner gate: Planned
 - `INF-022` CUA OAuth runner gate: Blocked
 - `INF-023` CUA user/access runner gate: Blocked
 - `INF-024` CUA end-to-end runner handoff: Blocked
@@ -18,6 +18,10 @@ lenscloud-platform/frappe-bench/apps/lenscloud/docs/handoffs/infra/cua-site-boot
 
 No CUA runner code, RBAC, image build, or cluster mutation is authorized by
 this document. It defines the implementation boundary and the next proof gates.
+
+The setup wizard path does not require a custom LensCloud branding/bootstrap
+app. Frappe v16 provides the first-class setup API required for the setup
+commands.
 
 ## Objective
 
@@ -56,34 +60,39 @@ Platform will not call target Site HTTP APIs with Administrator credentials.
 - Secret-safe status/result summaries.
 - Live verification, negative security proof, cleanup, and Platform handoff.
 
-### Branding App Owns
+### Target Site Image Owns
 
-For v1, the branding/bootstrap app should own only the setup wizard helper
-methods that are difficult to perform safely through standard Frappe APIs.
-
-OAuth and user/access work should use standard Frappe APIs or bench-executed
-standard Frappe methods first. Add branding app expansion for OAuth/user only
-if standard APIs prove insufficient during `INF-022` or `INF-023`.
-
-## Minimum Branding App Method Contract
-
-The new LensPure image must include a branding/bootstrap app that exposes these
-bench-executable methods:
+The target Bench image must include Frappe v16 or a compatible Frappe version
+that exposes the native setup wizard API:
 
 ```text
-lenscloud_branding.bootstrap.status
-lenscloud_branding.bootstrap.complete_setup
+frappe.is_setup_complete
+frappe.core.doctype.installed_applications.installed_applications.get_setup_wizard_pending_apps
+frappe.desk.page.setup_wizard.setup_wizard.setup_complete
 ```
 
-The final method names may change only if `INF-020` records the replacement
-contract before implementation.
+No additional LensCloud branding/bootstrap app is required for setup wizard
+status or completion.
 
-### `lenscloud_branding.bootstrap.status`
+OAuth and user/access work should use standard Frappe APIs or bench-executed
+standard Frappe methods first. Add a branding app expansion only if standard
+APIs prove insufficient during `INF-022` or `INF-023`.
+
+## Native Frappe Setup API Contract
+
+### `site_setup.status`
 
 Purpose:
 
 - Return whether the target Site setup wizard is complete.
 - Return safe next-action information for Platform.
+
+Implementation source:
+
+```text
+frappe.is_setup_complete()
+frappe.core.doctype.installed_applications.installed_applications.get_setup_wizard_pending_apps()
+```
 
 Expected sanitized result fields:
 
@@ -91,18 +100,25 @@ Expected sanitized result fields:
 {
   "setup_complete": false,
   "setup_required": true,
+  "pending_apps": ["frappe", "erpnext"],
   "message": "Setup wizard is pending",
   "warnings": [],
   "version": "1"
 }
 ```
 
-### `lenscloud_branding.bootstrap.complete_setup`
+### `site_setup.complete`
 
 Purpose:
 
 - Complete the setup wizard using Platform-resolved setup inputs.
 - Be idempotent when setup is already complete.
+
+Implementation source:
+
+```text
+frappe.desk.page.setup_wizard.setup_wizard.setup_complete(args)
+```
 
 Expected sanitized result fields:
 
@@ -116,18 +132,23 @@ Expected sanitized result fields:
 }
 ```
 
-The method must not return Administrator passwords, user passwords, OAuth client
+The native method returns `{"status": "ok"}` when the Site is already setup. If
+`trigger_site_setup_in_background` is enabled it may return
+`{"status": "registered"}`; the runner must then poll `site_setup.status` until
+completion or timeout.
+
+The runner must not return Administrator passwords, user passwords, OAuth client
 secrets, raw setup documents, raw site config, DB passwords, tokens, private
-keys, or full environment dumps.
+keys, tracebacks, pod logs, or full environment dumps.
 
 ## Command Gate Matrix
 
 | Infra ID | Command family | Commands | Current status | Unblock condition |
 | --- | --- | --- | --- | --- |
-| `INF-020` | image readiness | image/tag/digest and method check | Planned | New LensPure image includes branding/bootstrap app and setup methods |
-| `INF-021` | `site_setup` | `site_setup.status`, `site_setup.complete` | Blocked | `INF-020` complete, runner implemented, live proof on a real Site |
-| `INF-022` | `oauth` | `oauth.status`, `oauth.configure` | Blocked | `INF-020` and `INF-021` complete; standard Frappe API path chosen or branded method gap documented |
-| `INF-023` | `user`, `site_access` | `user.ensure`, `user.disable`, `user.roles.set`, `site_access.status` | Blocked | `INF-020` and `INF-021` complete; standard Frappe API path chosen or branded method gap documented |
+| `INF-020` | native setup API readiness | Frappe API contract review | Complete | Frappe v16 provides status and setup completion APIs |
+| `INF-021` | `site_setup` | `site_setup.status`, `site_setup.complete` | Planned | Runner implemented and live proof on a real Site |
+| `INF-022` | `oauth` | `oauth.status`, `oauth.configure` | Blocked | `INF-021` complete; standard Frappe API path chosen or branded method gap documented |
+| `INF-023` | `user`, `site_access` | `user.ensure`, `user.disable`, `user.roles.set`, `site_access.status` | Blocked | `INF-021` complete; standard Frappe API path chosen or branded method gap documented |
 | `INF-024` | CUA E2E | full setup, OAuth, user/access sequence | Blocked | `INF-020` through `INF-023` complete with evidence |
 
 Until a gate is complete, the runner must return `Unsupported` with
@@ -225,11 +246,12 @@ ConfigMaps, or evidence.
 
 ## Verification Requirements
 
-`INF-020` must prove:
+`INF-020` proved:
 
-- image tag and digest;
-- branding/bootstrap app installed in the image;
-- setup methods exist by using a non-secret bench execution check.
+- the native Frappe setup method exists;
+- setup completion is idempotent when the Site is already complete;
+- setup status can be derived without custom app code;
+- no special branding/bootstrap image is required for setup wizard completion.
 
 `INF-021` must prove on one real Platform-managed Bench/Site:
 

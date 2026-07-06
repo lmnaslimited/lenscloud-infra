@@ -405,7 +405,7 @@ Job/API pattern, but they are not supported yet.
 
 Canonical Infra gates:
 
-- `INF-020` CUA image readiness gate
+- `INF-020` CUA native setup API readiness gate
 - `INF-021` CUA setup wizard runner gate
 - `INF-022` CUA OAuth runner gate
 - `INF-023` CUA user/access runner gate
@@ -420,21 +420,22 @@ Planned CUA command families:
 
 | Family | Commands | Current status | Gate |
 | --- | --- | --- | --- |
-| `site_setup` | `site_setup.status`, `site_setup.complete` | Unsupported / blocked | Requires new LensPure image with branding/bootstrap setup methods and live `INF-021` proof |
-| `oauth` | `oauth.status`, `oauth.configure` | Unsupported / blocked | Requires `INF-020` and `INF-021`; use standard Frappe APIs first |
-| `user` | `user.ensure`, `user.disable`, `user.roles.set` | Unsupported / blocked | Requires `INF-020` and `INF-021`; use standard Frappe APIs first |
-| `site_access` | `site_access.status` | Unsupported / blocked | Requires `INF-020` and `INF-021`; use standard Frappe APIs first |
+| `site_setup` | `site_setup.status`, `site_setup.complete` | Unsupported / planned | Uses native Frappe setup APIs; requires live `INF-021` proof |
+| `oauth` | `oauth.status`, `oauth.configure` | Unsupported / blocked | Requires `INF-021`; use standard Frappe APIs first |
+| `user` | `user.ensure`, `user.disable`, `user.roles.set` | Unsupported / blocked | Requires `INF-021`; use standard Frappe APIs first |
+| `site_access` | `site_access.status` | Unsupported / blocked | Requires `INF-021`; use standard Frappe APIs first |
 
-The minimum branding/bootstrap app contract for the next LensPure image is:
+The setup wizard commands should use native Frappe v16 APIs:
 
 ```text
-lenscloud_branding.bootstrap.status
-lenscloud_branding.bootstrap.complete_setup
+frappe.is_setup_complete
+frappe.core.doctype.installed_applications.installed_applications.get_setup_wizard_pending_apps
+frappe.desk.page.setup_wizard.setup_wizard.setup_complete
 ```
 
 OAuth and user/access work should use standard Frappe APIs or bench-executed
-standard Frappe methods first. Expand the branding app for those areas only if
-standard APIs prove insufficient.
+standard Frappe methods first. Add a branding app for those areas only if
+standard APIs prove insufficient and the gap is documented.
 
 Until the relevant INF gate is complete, the runner must return
 `Unsupported` with `COMMAND_UNSUPPORTED` for CUA commands.
