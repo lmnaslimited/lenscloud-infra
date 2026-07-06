@@ -386,13 +386,17 @@ frappe.init(site=site, sites_path=sites_path)
 frappe.connect()
 
 try:
-    from frappe.core.doctype.installed_applications.installed_applications import (
-        get_setup_wizard_pending_apps,
-    )
+    def get_pending_setup_apps():
+        installed_apps = frappe.client_cache.get_doc("Installed Applications")
+        return [
+            item.app_name
+            for item in installed_apps.installed_applications
+            if item.has_setup_wizard and not item.is_setup_complete
+        ]
 
     def status_payload():
         setup_complete = bool(frappe.is_setup_complete())
-        pending_apps = [] if setup_complete else list(get_setup_wizard_pending_apps())
+        pending_apps = [] if setup_complete else get_pending_setup_apps()
         return {
             "setup_complete": setup_complete,
             "setup_required": not setup_complete,
