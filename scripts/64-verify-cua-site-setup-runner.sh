@@ -30,8 +30,31 @@ cleanup() {
     "${TEST_PREFIX}-sensitive-reject-request" \
     --ignore-not-found --wait=false >/dev/null 2>&1 || true
 }
+
+wait_for_cleanup() {
+  local name
+  for name in \
+    "${TEST_PREFIX}-status-before" \
+    "${TEST_PREFIX}-complete" \
+    "${TEST_PREFIX}-status-after" \
+    "${TEST_PREFIX}-complete-idempotent" \
+    "${TEST_PREFIX}-sensitive-reject"; do
+    for _ in $(seq 1 60); do
+      if ! "${manager[@]}" -n "$RUNTIME_NAMESPACE" get "job/${name}" >/dev/null 2>&1; then
+        break
+      fi
+      sleep 2
+    done
+    if "${manager[@]}" -n "$RUNTIME_NAMESPACE" get "job/${name}" >/dev/null 2>&1; then
+      echo "Timed out waiting for old Job ${name} to be deleted." >&2
+      exit 1
+    fi
+  done
+}
+
 trap cleanup EXIT
 cleanup
+wait_for_cleanup
 
 request_configmap() {
   local name="$1" command="$2" args="$3"
