@@ -1,8 +1,11 @@
 # CUA Site Bootstrap And SSO Implementation Prompt - 2026-07-06
 
-Use this prompt for the next Infra implementation session. This prompt is
-intentionally implementation-ready so the next agent can start without another
-planning cycle.
+Status: completed for `INF-021`.
+
+This prompt is retained as implementation evidence for the completed CUA Site
+setup runner gate. Do not use it as the next active prompt. Future CUA work
+starts from `docs/infra-workitems.md` and the planned `INF-022` OAuth runner
+gate / `INF-023` user-access runner gate.
 
 ```text
 Work inside:
@@ -10,10 +13,10 @@ Work inside:
 /Users/arunkumar.ganesan/lensk8s/lenscloud-infra
 
 Goal:
-Continue the first CUA Infra runner gate for Site setup only. Runner source is
-implemented for native Frappe setup wizard APIs; the remaining gate is image
-publication, admission digest pinning, and live verification. Do not implement
-OAuth, user/access, or full CUA E2E until the setup wizard proof is complete.
+Historical goal:
+Complete the first CUA Infra runner gate for Site setup only. This is now
+complete. Do not implement OAuth, user/access, or full CUA E2E from this
+historical prompt.
 
 Start by reading, in order:
 
@@ -32,9 +35,9 @@ Documentation discipline:
 - Update docs/infra-workitems.md first.
 - Confirm INF-020 remains Complete and points to native Frappe setup API
   readiness evidence.
-- Keep INF-021 as Ready for Verification until image publication, admission
-  pinning, live proof, cleanup, and Platform handoff are complete.
-- Keep INF-022, INF-023, and INF-024 Blocked until INF-021 has live evidence.
+- INF-021 is now Complete with live evidence.
+- INF-022 and INF-023 are Planned.
+- INF-024 remains Blocked until INF-022 and INF-023 are complete.
 - Do not create standalone trackers outside docs/infra-workitems.md.
 
 Protected baseline:
@@ -48,7 +51,7 @@ INF-020 status:
 Complete. Frappe v16 already provides the required native setup wizard APIs:
 
 - frappe.is_setup_complete
-- frappe.core.doctype.installed_applications.installed_applications.get_setup_wizard_pending_apps
+- frappe.client_cache.get_doc("Installed Applications")
 - frappe.desk.page.setup_wizard.setup_wizard.setup_complete
 
 Do not wait for a LensCloud branding/bootstrap app for setup wizard completion.
@@ -66,13 +69,13 @@ INF-021 implemented source:
    - code: COMMAND_UNSUPPORTED
 5. site_setup.status calls:
    - frappe.is_setup_complete()
-   - get_setup_wizard_pending_apps()
+   - frappe.client_cache.get_doc("Installed Applications")
 6. site_setup.complete calls:
    - frappe.desk.page.setup_wizard.setup_wizard.setup_complete(args)
 7. If setup_complete(args) returns {"status": "registered"}, the runner polls
    site_setup.status until complete or timeout.
 
-INF-021 remaining tasks:
+INF-021 completed tasks:
 
 1. Build and publish a new runner image from the current approved runner base.
    A special LensPure branding/bootstrap image is not required for setup.

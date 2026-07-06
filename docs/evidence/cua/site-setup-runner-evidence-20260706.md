@@ -6,12 +6,11 @@
 
 ## Status
 
-In live verification.
+Complete.
 
 The runner source and local verification are complete. The updated runner image
-has been published and admission has been updated in source. Live cluster
-verification must prove the pinned image against a real Platform-managed
-Bench/Site before Platform enables customer workflows.
+has been published, admission has been applied to the EU cluster, and live
+cluster verification passed against a real Platform-managed Bench/Site.
 
 ## Files Changed
 
@@ -36,7 +35,7 @@ The runner uses native Frappe setup APIs inside the target Bench/Site context:
 
 ```text
 frappe.is_setup_complete()
-frappe.core.doctype.installed_applications.installed_applications.get_setup_wizard_pending_apps()
+frappe.client_cache.get_doc("Installed Applications")
 frappe.desk.page.setup_wizard.setup_wizard.setup_complete(args)
 ```
 
@@ -89,19 +88,43 @@ Covered locally:
 `site_setup` Bench Command family in the admission allowlist and pins the
 `v0.1.8` runner digest above.
 
-## Live Verification Command
+## Live Verification
 
-After publishing the new runner image and pinning the digest in admission, run:
+Manager revision:
+
+```text
+6869dd2
+```
+
+Command:
 
 ```bash
 RUNNER_IMAGE='ghcr.io/lmnaslimited/lenscloud-bench-command-runner@sha256:2905fb71dfb449258214a7b76016a67d9b98bd66ea378394f98d791ab293dad5' \
-REAL_BENCH='<platform-managed-bench>' \
-REAL_SITE='<platform-managed-site.cloud.lmnaslens.com>' \
-REAL_SITES_PVC='<platform-managed-bench-sites-pvc>' \
+REAL_BENCH='run-20260702-free-prod-bench' \
+REAL_SITE='run-20260702-free-site.cloud.lmnaslens.com' \
+REAL_SITES_PVC='run-20260702-free-prod-bench-sites' \
+EXPECT_PENDING_BEFORE_COMPLETE=0 \
+PLATFORM_KUBECONFIG='.artifacts/lenscloud-eu.kubeconfig' \
+RUNTIME_NAMESPACE='lenscloud-runtime-eu' \
+TEST_PREFIX='run-20260706-cua-existing' \
 ./scripts/64-verify-cua-site-setup-runner.sh
 ```
 
-The live verifier proves:
+Result:
+
+```text
+CUA site setup runner verification passed.
+Runtime namespace: lenscloud-runtime-eu
+Bench: run-20260702-free-prod-bench
+Site: run-20260702-free-site.cloud.lmnaslens.com
+Sites PVC: run-20260702-free-prod-bench-sites
+Positive commands: site_setup.status, site_setup.complete
+Negative command: site_setup.complete with sensitive key rejected
+Temporary resource prefix: run-20260706-cua-existing
+No resources found in lenscloud-runtime-eu namespace.
+```
+
+The live verifier proved:
 
 - `site_setup.status` before completion;
 - `site_setup.complete`;
@@ -115,7 +138,9 @@ The live verifier proves:
 Local verification used only temporary filesystem resources through `mktemp`
 and cleaned them on exit.
 
-No cluster resources were created by this implementation pass.
+Live verification created only temporary Jobs and request ConfigMaps with
+prefix `run-20260706-cua-existing`. The verifier deleted them and confirmed no
+resources remained with that label selector.
 
 ## Secret Redaction Proof
 
@@ -138,8 +163,7 @@ The runner returns sanitized errors only. It does not include:
 
 ## Remaining Gaps
 
-- Apply the admission/RBAC manifest to the target cluster.
-- Run `scripts/64-verify-cua-site-setup-runner.sh` against a real
-  Platform-managed Bench/Site.
-- Capture live proof before enabling Platform customer workflows.
-- Keep OAuth, user, and site access commands blocked until setup proof is live.
+- Platform may integrate `site_setup.status` and `site_setup.complete` through
+  the Bench Command Job/API contract.
+- OAuth, user, and site access commands remain unsupported until `INF-022` and
+  `INF-023` are implemented and live-verified.

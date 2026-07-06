@@ -6,13 +6,11 @@
 
 ## Status
 
-Source implemented, runner image published, and source admission pin updated.
-Live cluster verification is still required before Platform enables
-customer-facing setup workflows.
+Complete. Source implemented, runner image published, admission pin applied,
+and live verification passed against a real Platform-managed Bench/Site.
 
-Platform must not enable customer-facing `site_setup` workflows until Infra
-runs live verification against a real Platform-managed Bench/Site and updates
-this handoff with final evidence.
+Platform may integrate `site_setup.status` and `site_setup.complete` through
+the existing Bench Command Job/API path.
 
 Published runner:
 
@@ -29,7 +27,7 @@ These commands use native Frappe setup wizard APIs:
 
 ```text
 frappe.is_setup_complete()
-frappe.core.doctype.installed_applications.installed_applications.get_setup_wizard_pending_apps()
+frappe.client_cache.get_doc("Installed Applications")
 frappe.desk.page.setup_wizard.setup_wizard.setup_complete(args)
 ```
 
@@ -140,7 +138,6 @@ passwords, tokens, private keys, or raw setup documents in request args.
 
 Platform should:
 
-- keep `site_setup` disabled until Infra returns live verification evidence;
 - keep OAuth, user, and site access commands marked `Unsupported`;
 - create request ConfigMaps and Jobs through the existing Python Kubernetes API
   Bench Command path;
@@ -177,13 +174,21 @@ Live verification script:
 lenscloud-infra/scripts/64-verify-cua-site-setup-runner.sh
 ```
 
-Live evidence remains pending until the new runner image is published and
-admission-pinned.
+Live verification passed:
+
+```text
+Manager revision: 6869dd2
+Runtime namespace: lenscloud-runtime-eu
+Bench: run-20260702-free-prod-bench
+Site: run-20260702-free-site.cloud.lmnaslens.com
+Sites PVC: run-20260702-free-prod-bench-sites
+Positive commands: site_setup.status, site_setup.complete
+Negative command: site_setup.complete with sensitive key rejected
+Temporary prefix: run-20260706-cua-existing
+Cleanup proof: no resources found with that prefix
+```
 
 ## Remaining Infra Gaps
 
-- Publish the new runner image.
-- Pin the new runner digest in admission.
-- Apply admission/RBAC changes to the target cluster.
-- Run live verification against a real Platform-managed Bench/Site.
-- Update this handoff and `docs/infra-workitems.md` after live proof.
+- OAuth commands remain `Unsupported` until `INF-022`.
+- User and site access commands remain `Unsupported` until `INF-023`.

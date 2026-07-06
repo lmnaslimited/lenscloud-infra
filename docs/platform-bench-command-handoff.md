@@ -96,10 +96,9 @@ GHCR package was made publicly pullable by the EU worker. The current `v0.1.8`
 image with the display and metadata-only `backup.status` contracts was
 live-verified on 2026-06-30.
 
-The `site_setup.status` and `site_setup.complete` source is implemented after
-`INF-020` confirmed native Frappe setup APIs. These commands are not Platform
-enabled until a new runner image is published, admission-pinned, and
-live-verified through `INF-021`.
+The `site_setup.status` and `site_setup.complete` commands are implemented and
+live-verified through `INF-021`. Platform may integrate them through the Bench
+Command Job/API path.
 
 Real Frappe Operator sites PVC proof passed on 2026-06-29 with
 `maintenance_mode.status` against:
@@ -406,8 +405,9 @@ runtime enforcement for that control.
 ## CUA Site Bootstrap And SSO Commands
 
 CUA Site bootstrap and SSO commands use the same Bench Command Job/API pattern.
-The `site_setup` runner source is implemented but not Platform-enabled until
-the new runner image is published, admission-pinned, and live-verified.
+The `site_setup` runner commands are implemented, admission-pinned, and
+live-verified. OAuth, user, and site access commands remain unsupported until
+their own gates are implemented and verified.
 
 Canonical Infra gates:
 
@@ -426,16 +426,16 @@ Planned CUA command families:
 
 | Family | Commands | Current status | Gate |
 | --- | --- | --- | --- |
-| `site_setup` | `site_setup.status`, `site_setup.complete` | Source implemented / pending live proof | Uses native Frappe setup APIs; requires new runner digest and live `INF-021` proof |
-| `oauth` | `oauth.status`, `oauth.configure` | Unsupported / blocked | Requires `INF-021`; use standard Frappe APIs first |
-| `user` | `user.ensure`, `user.disable`, `user.roles.set` | Unsupported / blocked | Requires `INF-021`; use standard Frappe APIs first |
-| `site_access` | `site_access.status` | Unsupported / blocked | Requires `INF-021`; use standard Frappe APIs first |
+| `site_setup` | `site_setup.status`, `site_setup.complete` | Supported / live-verified | Uses native Frappe setup APIs; see `INF-021` evidence |
+| `oauth` | `oauth.status`, `oauth.configure` | Unsupported / planned | `INF-022`; use standard Frappe APIs first |
+| `user` | `user.ensure`, `user.disable`, `user.roles.set` | Unsupported / planned | `INF-023`; use standard Frappe APIs first |
+| `site_access` | `site_access.status` | Unsupported / planned | `INF-023`; use standard Frappe APIs first |
 
 The setup wizard commands should use native Frappe v16 APIs:
 
 ```text
 frappe.is_setup_complete
-frappe.core.doctype.installed_applications.installed_applications.get_setup_wizard_pending_apps
+frappe.client_cache.get_doc("Installed Applications")
 frappe.desk.page.setup_wizard.setup_wizard.setup_complete
 ```
 
@@ -443,9 +443,9 @@ OAuth and user/access work should use standard Frappe APIs or bench-executed
 standard Frappe methods first. Add a branding app for those areas only if
 standard APIs prove insufficient and the gap is documented.
 
-Until `INF-021` live proof is complete, Platform must not enable `site_setup`
-for customer workflows. OAuth, user, and site access commands must continue to
-return `Unsupported` with `COMMAND_UNSUPPORTED`.
+Platform may enable `site_setup` for customer workflows after consuming the
+dedicated `INF-021` handoff. OAuth, user, and site access commands must
+continue to return `Unsupported` with `COMMAND_UNSUPPORTED`.
 
 ### Backup Status Display
 
@@ -631,7 +631,7 @@ Runner image: published to GHCR and pinned by digest.
 Admission: live-applied and denies non-runner maintenance_mode images.
 Local container smoke: passed.
 Live positive runner Job: passed for maintenance_mode.enable.
-Current v0.1.8 runner image: live-verified on 2026-06-30.
+Current v0.1.8 runner image: live-verified for CUA setup on 2026-07-06.
 Cleanup: temporary runner Job, ConfigMaps, and Pod removed.
 ```
 
@@ -665,8 +665,8 @@ docs/handoffs/platform/cua-site-setup-runner-handoff-20260706.md
 lenscloud-platform/frappe-bench/apps/lenscloud/docs/handoffs/platform/cua-site-setup-runner-20260706.md
 ```
 
-Do not enable `site_setup` in customer workflows until `INF-021` is marked
-Complete with live evidence.
+`site_setup` may be enabled after Platform consumes the `INF-021` handoff and
+keeps OAuth/user/site access commands unsupported.
 
 Legacy Site Control prompt:
 
