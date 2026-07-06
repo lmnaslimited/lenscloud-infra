@@ -362,6 +362,7 @@ spec:
           'developer_mode',
           'site_config',
           'cors',
+          'site_setup',
           'bench_test',
           'latp'
         ]

@@ -30,6 +30,7 @@ run_command() {
   BENCH_PATH="$bench_path" \
   BENCH_COMMAND_REQUEST="$request_path" \
   BENCH_COMMAND_TERMINATION_LOG="$termination_path" \
+  LENS_COMMAND_FAKE_FRAPPE_SETUP=1 \
     python3 bench-command-runner/runner.py >/dev/null
   local actual=$?
   set -e
@@ -118,5 +119,25 @@ nested_target='"target":{"namespace":"lenscloud-runtime-eu","bench":"runner-test
 run_command nested_maintenance_status \
   "{\"apiVersion\":\"lenscloud.io/v1\",\"kind\":\"BenchCommand\",\"commandId\":\"local-8\",\"command\":\"maintenance_mode.status\",${nested_target},\"args\":{},\"timeoutSeconds\":60}" |
   grep -F '"layout":"frappe-sites"' >/dev/null
+
+run_command setup_status_pending \
+  "{\"apiVersion\":\"lenscloud.io/v1\",\"kind\":\"BenchCommand\",\"commandId\":\"local-9\",\"command\":\"site_setup.status\",${base_target},\"args\":{},\"timeoutSeconds\":60}" |
+  grep -F '"summary":"Setup wizard is pending"' >/dev/null
+
+run_command setup_complete \
+  "{\"apiVersion\":\"lenscloud.io/v1\",\"kind\":\"BenchCommand\",\"commandId\":\"local-10\",\"command\":\"site_setup.complete\",${base_target},\"args\":{\"language\":\"English\",\"email\":\"first.user@example.com\",\"full_name\":\"First User\",\"country\":\"United States\",\"timezone\":\"America/New_York\",\"currency\":\"USD\"},\"timeoutSeconds\":60}" |
+  grep -F '"summary":"Setup wizard completed"' >/dev/null
+
+run_command setup_status_complete \
+  "{\"apiVersion\":\"lenscloud.io/v1\",\"kind\":\"BenchCommand\",\"commandId\":\"local-11\",\"command\":\"site_setup.status\",${base_target},\"args\":{},\"timeoutSeconds\":60}" |
+  grep -F '"summary":"Setup wizard is complete"' >/dev/null
+
+run_command setup_complete_idempotent \
+  "{\"apiVersion\":\"lenscloud.io/v1\",\"kind\":\"BenchCommand\",\"commandId\":\"local-12\",\"command\":\"site_setup.complete\",${base_target},\"args\":{\"language\":\"English\",\"email\":\"first.user@example.com\",\"full_name\":\"First User\",\"country\":\"United States\",\"timezone\":\"America/New_York\",\"currency\":\"USD\"},\"timeoutSeconds\":60}" |
+  grep -F '"idempotent":true' >/dev/null
+
+run_command setup_sensitive_reject \
+  "{\"apiVersion\":\"lenscloud.io/v1\",\"kind\":\"BenchCommand\",\"commandId\":\"local-13\",\"command\":\"site_setup.complete\",${base_target},\"args\":{\"language\":\"English\",\"admin_password\":\"must-not-leak\"},\"timeoutSeconds\":60}" \
+  1 | grep '"code":"INVALID_ARGUMENTS"' >/dev/null
 
 echo "Bench command runner local verification passed."

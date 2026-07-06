@@ -10,9 +10,10 @@ Work inside:
 /Users/arunkumar.ganesan/lensk8s/lenscloud-infra
 
 Goal:
-Implement the first CUA Infra runner gate for Site setup only by using native
-Frappe setup wizard APIs. Do not implement OAuth, user/access, or full CUA E2E
-until the setup wizard proof is complete.
+Continue the first CUA Infra runner gate for Site setup only. Runner source is
+implemented for native Frappe setup wizard APIs; the remaining gate is image
+publication, admission digest pinning, and live verification. Do not implement
+OAuth, user/access, or full CUA E2E until the setup wizard proof is complete.
 
 Start by reading, in order:
 
@@ -31,7 +32,8 @@ Documentation discipline:
 - Update docs/infra-workitems.md first.
 - Confirm INF-020 remains Complete and points to native Frappe setup API
   readiness evidence.
-- Move INF-021 to In Progress when implementation starts.
+- Keep INF-021 as Ready for Verification until image publication, admission
+  pinning, live proof, cleanup, and Platform handoff are complete.
 - Keep INF-022, INF-023, and INF-024 Blocked until INF-021 has live evidence.
 - Do not create standalone trackers outside docs/infra-workitems.md.
 
@@ -51,28 +53,32 @@ Complete. Frappe v16 already provides the required native setup wizard APIs:
 
 Do not wait for a LensCloud branding/bootstrap app for setup wizard completion.
 
-INF-021 tasks:
+INF-021 implemented source:
 
-1. Add the CUA setup command family to the Bench Command runner allowlist:
+1. The CUA setup command family is present in the Bench Command runner allowlist:
    - site_setup.status
    - site_setup.complete
-2. Implement typed args validation for setup commands.
-3. Use bench-executed native Frappe setup methods; do not use target Site HTTP
+2. Typed args validation for setup commands is implemented.
+3. The runner uses bench-executed native Frappe setup methods; do not use target Site HTTP
    API Administrator login.
-4. Ensure unsupported CUA commands return:
+4. Unsupported CUA commands must continue to return:
    - phase: Unsupported
    - code: COMMAND_UNSUPPORTED
-5. For site_setup.status, call:
+5. site_setup.status calls:
    - frappe.is_setup_complete()
    - get_setup_wizard_pending_apps()
-6. For site_setup.complete, call:
+6. site_setup.complete calls:
    - frappe.desk.page.setup_wizard.setup_wizard.setup_complete(args)
-7. If setup_complete(args) returns {"status": "registered"}, poll
+7. If setup_complete(args) returns {"status": "registered"}, the runner polls
    site_setup.status until complete or timeout.
-8. Build and publish a new runner image from the current approved runner base.
+
+INF-021 remaining tasks:
+
+1. Build and publish a new runner image from the current approved runner base.
    A special LensPure branding/bootstrap image is not required for setup.
-9. Pin the new runner digest in admission/RBAC manifests.
-10. Live-verify on one real Platform-managed Bench/Site:
+2. Pin the new runner digest in admission/RBAC manifests.
+3. Apply the updated RBAC/admission manifest.
+4. Live-verify on one real Platform-managed Bench/Site:
     - setup status before completion;
     - setup completion;
     - setup status after completion;
@@ -80,11 +86,14 @@ INF-021 tasks:
     - background setup behavior if enabled;
     - unsafe request rejection;
     - cleanup of request ConfigMap, Job, and terminal Pod.
-11. Create a dated evidence file:
-    - docs/cua-site-setup-runner-evidence-YYYYMMDD.md
-12. Update docs/platform-bench-command-handoff.md with the final site_setup request/response examples and runner digest.
-13. Add or update the Platform handoff prompt for Platform to consume site_setup commands.
-14. Mark INF-021 Complete only after implementation, live proof, cleanup, and Platform handoff are complete.
+5. Update evidence:
+   - docs/evidence/cua/site-setup-runner-evidence-20260706.md
+6. Update docs/platform-bench-command-handoff.md with the final runner digest
+   and live status.
+7. Update the Platform handoff:
+   - docs/handoffs/platform/cua-site-setup-runner-handoff-20260706.md
+   - lenscloud-platform/frappe-bench/apps/lenscloud/docs/handoffs/platform/cua-site-setup-runner-20260706.md
+8. Mark INF-021 Complete only after implementation, live proof, cleanup, and Platform handoff are complete.
 
 Do not start INF-022, INF-023, or INF-024 in this session unless INF-021 is already complete with evidence.
 

@@ -5,7 +5,7 @@
 This contract is traceable through `docs/infra-workitems.md`:
 
 - `INF-020` CUA native setup API readiness gate: Complete
-- `INF-021` CUA setup wizard runner gate: Planned
+- `INF-021` CUA setup wizard runner gate: Ready for Verification
 - `INF-022` CUA OAuth runner gate: Blocked
 - `INF-023` CUA user/access runner gate: Blocked
 - `INF-024` CUA end-to-end runner handoff: Blocked
@@ -146,7 +146,7 @@ keys, tracebacks, pod logs, or full environment dumps.
 | Infra ID | Command family | Commands | Current status | Unblock condition |
 | --- | --- | --- | --- | --- |
 | `INF-020` | native setup API readiness | Frappe API contract review | Complete | Frappe v16 provides status and setup completion APIs |
-| `INF-021` | `site_setup` | `site_setup.status`, `site_setup.complete` | Planned | Runner implemented and live proof on a real Site |
+| `INF-021` | `site_setup` | `site_setup.status`, `site_setup.complete` | Ready for Verification | Runner source implemented; needs image publish, digest pin, and live proof on a real Site |
 | `INF-022` | `oauth` | `oauth.status`, `oauth.configure` | Blocked | `INF-021` complete; standard Frappe API path chosen or branded method gap documented |
 | `INF-023` | `user`, `site_access` | `user.ensure`, `user.disable`, `user.roles.set`, `site_access.status` | Blocked | `INF-021` complete; standard Frappe API path chosen or branded method gap documented |
 | `INF-024` | CUA E2E | full setup, OAuth, user/access sequence | Blocked | `INF-020` through `INF-023` complete with evidence |

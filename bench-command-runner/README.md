@@ -91,6 +91,8 @@ Current implemented commands:
 - `site_config.get`
 - `cors.allowlist.update`
 - `cors.allowlist.get`
+- `site_setup.status`
+- `site_setup.complete`
 - `backup.status`
 
 `backup.status` is metadata-only. It returns backup count/latest-file metadata
@@ -112,7 +114,7 @@ Build example:
 
 ```bash
 docker build \
-  -t ghcr.io/lmnaslimited/lenscloud-bench-command-runner:v0.1.4 \
+  -t ghcr.io/lmnaslimited/lenscloud-bench-command-runner:v0.1.5 \
   bench-command-runner
 ```
 
@@ -122,6 +124,13 @@ Published image:
 ghcr.io/lmnaslimited/lenscloud-bench-command-runner@sha256:eebfa0199c328207b14a949fa6232954a203a3937b1eed4930e9c3ec95b654d6
 ```
 
-The live admission policy accepts this digest for production Bench Command Jobs.
-Cluster pull access must be verified in each runtime environment before Platform
-enables the implemented commands.
+The published digest above is the last live-verified runner. The `site_setup`
+commands require a new image build from this source, publication, admission
+digest pinning, and live verification with:
+
+```bash
+scripts/64-verify-cua-site-setup-runner.sh
+```
+
+Cluster pull access must be verified in each runtime environment before
+Platform enables newly implemented commands.
