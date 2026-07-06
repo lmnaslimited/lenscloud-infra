@@ -4,8 +4,15 @@ Status: completed for `INF-021`.
 
 This prompt is retained as implementation evidence for the completed CUA Site
 setup runner gate. Do not use it as the next active prompt. Future CUA work
-starts from `docs/infra-workitems.md` and the planned `INF-022` OAuth runner
-gate / `INF-023` user-access runner gate.
+starts from `docs/infra-workitems.md`.
+
+Current CUA gate status:
+
+- `INF-021` setup runner: Complete.
+- `INF-022` OAuth runner: source/local verification complete; image published
+  and repo-pinned; admission apply and live verification remain.
+- `INF-023` user/access runner: Blocked until `INF-022` live verification is
+  complete.
 
 ```text
 Work inside:
@@ -36,7 +43,8 @@ Documentation discipline:
 - Confirm INF-020 remains Complete and points to native Frappe setup API
   readiness evidence.
 - INF-021 is now Complete with live evidence.
-- INF-022 and INF-023 are Planned.
+- INF-022 is Ready for Verification.
+- INF-023 is Blocked until INF-022 live verification is complete.
 - INF-024 remains Blocked until INF-022 and INF-023 are complete.
 - Do not create standalone trackers outside docs/infra-workitems.md.
 
@@ -102,9 +110,12 @@ Do not start INF-022, INF-023, or INF-024 in this session unless INF-021 is alre
 
 Future gated work:
 
-- INF-022 oauth.status/oauth.configure should use standard Frappe APIs first.
-- INF-023 user.ensure/user.disable/user.roles.set/site_access.status should use standard Frappe APIs first.
-- Add a branding app for OAuth/user only if standard Frappe APIs prove
+- INF-022 oauth.status/oauth.configure uses standard Frappe Social Login Key
+  APIs. Platform owns the Platform-side OAuth Client; Infra runner owns the
+  target Site Social Login Key.
+- INF-023 user.ensure/user.disable/user.roles.set/site_access.status should use
+  standard Frappe APIs first.
+- Add a branding app for user/access only if standard Frappe APIs prove
   insufficient and the gap is documented.
 
 Final response must include:

@@ -363,6 +363,7 @@ spec:
           'site_config',
           'cors',
           'site_setup',
+          'oauth',
           'bench_test',
           'latp'
         ]
@@ -372,10 +373,19 @@ spec:
         && has(object.spec.template.spec.automountServiceAccountToken)
         && object.spec.template.spec.automountServiceAccountToken == false
         && (!has(object.spec.template.spec.volumes)
-          || object.spec.template.spec.volumes.all(volume, !has(volume.secret)))
+          || object.spec.template.spec.volumes.all(volume,
+            !has(volume.secret)
+            || (
+              object.metadata.annotations['lenscloud.io/bench-command-family'] == 'oauth'
+              && volume.name == 'oauth-client-secret'
+              && has(volume.secret.secretName)
+              && has(volume.secret.items)
+              && volume.secret.items.size() == 1
+              && volume.secret.items[0].key == 'client_secret'
+            )))
         && object.spec.template.spec.containers.all(container,
           (
-            container.image == 'ghcr.io/lmnaslimited/lenscloud-bench-command-runner@sha256:2905fb71dfb449258214a7b76016a67d9b98bd66ea378394f98d791ab293dad5'
+            container.image == 'ghcr.io/lmnaslimited/lenscloud-bench-command-runner@sha256:31973edd01e9c6ea75f2a3b4ef323d5ff643fcec97b2d49b6da9d9d10b7f7580'
             || (
               object.metadata.annotations['lenscloud.io/bench-command-family'] == 'bench_test'
               && 'lenscloud.io/bench-command' in object.metadata.annotations
@@ -385,14 +395,24 @@ spec:
           )
           &&
           (!has(container.envFrom) || container.envFrom.size() == 0)
+          && (!has(container.volumeMounts)
+            || container.volumeMounts.all(mount,
+              mount.name != 'oauth-client-secret'
+              || (
+                object.metadata.annotations['lenscloud.io/bench-command-family'] == 'oauth'
+                && mount.mountPath == '/lenscloud/secrets'
+                && has(mount.readOnly)
+                && mount.readOnly == true
+              )))
           && (!has(container.securityContext)
             || (!has(container.securityContext.privileged)
               || container.securityContext.privileged == false))))
       message: >-
         LensCloud Platform may create only labelled bench-command Jobs with an
         approved command family, approved runner image, one non-privileged
-        container, no Secret volumes, no envFrom, no service-account token,
-        restartPolicy Never, and backoffLimit <= 1.
+        container, no envFrom, no service-account token, restartPolicy Never,
+        backoffLimit <= 1, and no Secret volumes except the approved
+        oauth-client-secret/client_secret mount for oauth commands.
 ---
 apiVersion: admissionregistration.k8s.io/v1
 kind: ValidatingAdmissionPolicyBinding

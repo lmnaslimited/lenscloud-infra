@@ -58,7 +58,8 @@ The runner:
 - returns sanitized JSON through the container termination log;
 - returns a stable `display` object for supported read/status commands;
 - does not use the Kubernetes API;
-- does not require Kubernetes Secret mounts;
+- does not require Kubernetes Secret mounts except for the approved
+  `oauth.configure` client-secret file mount;
 - does not print full environment dumps, DB passwords, tokens, or private keys.
 
 Display contract:
@@ -93,6 +94,8 @@ Current implemented commands:
 - `cors.allowlist.get`
 - `site_setup.status`
 - `site_setup.complete`
+- `oauth.status`
+- `oauth.configure`
 - `backup.status`
 
 `backup.status` is metadata-only. It returns backup count/latest-file metadata
@@ -114,23 +117,42 @@ Build example:
 
 ```bash
 docker build \
-  -t ghcr.io/lmnaslimited/lenscloud-bench-command-runner:v0.1.8 \
+  -t ghcr.io/lmnaslimited/lenscloud-bench-command-runner:v0.1.9 \
   bench-command-runner
 ```
 
 Published image:
 
 ```text
-ghcr.io/lmnaslimited/lenscloud-bench-command-runner@sha256:2905fb71dfb449258214a7b76016a67d9b98bd66ea378394f98d791ab293dad5
+ghcr.io/lmnaslimited/lenscloud-bench-command-runner@sha256:31973edd01e9c6ea75f2a3b4ef323d5ff643fcec97b2d49b6da9d9d10b7f7580
 ```
 
-The published digest above is the last live-verified runner. The `site_setup`
-commands require a new image build from this source, publication, admission
-digest pinning, and live verification with:
+The published digest above includes the OAuth runner source. It still requires
+admission application and live verification with:
 
 ```bash
-scripts/64-verify-cua-site-setup-runner.sh
+scripts/65-verify-cua-oauth-runner.sh
 ```
 
 Cluster pull access must be verified in each runtime environment before
 Platform enables newly implemented commands.
+
+## OAuth Secret Boundary
+
+`oauth.status` does not need a Secret mount.
+
+`oauth.configure` requires the Platform OAuth client secret as a mounted file:
+
+```text
+/lenscloud/secrets/client_secret
+```
+
+The request ConfigMap must set:
+
+```json
+{"client_secret_source":"mounted_file"}
+```
+
+The request ConfigMap must not include `client_secret`. The runner rejects
+direct `client_secret` args and returns only sanitized status fields such as
+`secret_configured: true`.

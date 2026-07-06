@@ -5,8 +5,8 @@
 This contract is traceable through `docs/infra-workitems.md`:
 
 - `INF-020` CUA native setup API readiness gate: Complete
-- `INF-021` CUA setup wizard runner gate: Ready for Verification
-- `INF-022` CUA OAuth runner gate: Blocked
+- `INF-021` CUA setup wizard runner gate: Complete
+- `INF-022` CUA OAuth runner gate: Ready for Verification
 - `INF-023` CUA user/access runner gate: Blocked
 - `INF-024` CUA end-to-end runner handoff: Blocked
 
@@ -74,9 +74,15 @@ frappe.desk.page.setup_wizard.setup_wizard.setup_complete
 No additional LensCloud branding/bootstrap app is required for setup wizard
 status or completion.
 
-OAuth and user/access work should use standard Frappe APIs or bench-executed
-standard Frappe methods first. Add a branding app expansion only if standard
-APIs prove insufficient during `INF-022` or `INF-023`.
+OAuth work uses standard Frappe Social Login Key APIs in the target Site.
+Platform owns OAuth Client setup in the Platform Site and passes only the
+target Social Login Key configuration to the runner. Infra owns creating,
+updating, and reporting the target Site `Social Login Key` through
+`oauth.status` and `oauth.configure`.
+
+User/access work should use standard Frappe APIs or bench-executed standard
+Frappe methods first. Add a branding app expansion only if standard APIs prove
+insufficient during `INF-023`.
 
 ## Native Frappe Setup API Contract
 
@@ -146,9 +152,9 @@ keys, tracebacks, pod logs, or full environment dumps.
 | Infra ID | Command family | Commands | Current status | Unblock condition |
 | --- | --- | --- | --- | --- |
 | `INF-020` | native setup API readiness | Frappe API contract review | Complete | Frappe v16 provides status and setup completion APIs |
-| `INF-021` | `site_setup` | `site_setup.status`, `site_setup.complete` | Ready for Verification | Runner source implemented; needs image publish, digest pin, and live proof on a real Site |
-| `INF-022` | `oauth` | `oauth.status`, `oauth.configure` | Blocked | `INF-021` complete; standard Frappe API path chosen or branded method gap documented |
-| `INF-023` | `user`, `site_access` | `user.ensure`, `user.disable`, `user.roles.set`, `site_access.status` | Blocked | `INF-021` complete; standard Frappe API path chosen or branded method gap documented |
+| `INF-021` | `site_setup` | `site_setup.status`, `site_setup.complete` | Complete | Live proof passed on a real Platform-managed Site |
+| `INF-022` | `oauth` | `oauth.status`, `oauth.configure` | Ready for Verification | Source/local proof complete; runner image published and repo-pinned; admission apply and live verification remain |
+| `INF-023` | `user`, `site_access` | `user.ensure`, `user.disable`, `user.roles.set`, `site_access.status` | Blocked | Wait until OAuth runner is live-verified, then choose standard Frappe API path or document a branded-method gap |
 | `INF-024` | CUA E2E | full setup, OAuth, user/access sequence | Blocked | `INF-020` through `INF-023` complete with evidence |
 
 Until a gate is complete, the runner must return `Unsupported` with
@@ -194,10 +200,93 @@ CUA commands extend the existing Bench Command request stored in
 - first user email/name;
 - role mapping.
 
-OAuth args for future `INF-022` work may include issuer URL, client ID,
-redirect URI, allowed scopes, provider label, and server-side secret reference
-name if the final runner contract permits it. OAuth client secret values must
-never be placed in ConfigMaps, action logs, evidence, or browser responses.
+## INF-022 OAuth / Social Login Boundary
+
+Platform owns the Platform-side `OAuth Client`. That record defines the
+authorization server app, allowed roles, redirect URI, and client secret. A
+representative Platform-owned shape is:
+
+```json
+{
+  "doctype": "OAuth Client",
+  "client_id": "f9312840a0",
+  "app_name": "Nectar",
+  "scopes": "all openid",
+  "redirect_uris": "https://crm.lmnaslens.com/api/method/frappe.integrations.oauth2_logins.custom/nectar",
+  "default_redirect_uri": "https://crm.lmnaslens.com/api/method/frappe.integrations.oauth2_logins.custom/nectar",
+  "grant_type": "Authorization Code",
+  "response_type": "Code",
+  "allowed_roles": [{"role": "Desk User"}]
+}
+```
+
+Infra does not create or mutate the Platform `OAuth Client`. Infra runner
+commands configure the target Site `Social Login Key` that points back to the
+Platform OAuth provider. A representative target-Site shape is:
+
+```json
+{
+  "doctype": "Social Login Key",
+  "name": "nectar",
+  "enable_social_login": 1,
+  "social_login_provider": "Custom",
+  "provider_name": "Nectar",
+  "client_id": "lavpf2erok",
+  "base_url": "https://nectar.lmnas.com",
+  "authorize_url": "/api/method/frappe.integrations.oauth2.authorize",
+  "access_token_url": "/api/method/frappe.integrations.oauth2.get_token",
+  "redirect_url": "https://qsgbcz.lmnas.com/api/method/frappe.integrations.oauth2_logins.custom/nectar",
+  "api_endpoint": "/api/method/frappe.integrations.oauth2.openid_profile",
+  "custom_base_url": 1,
+  "auth_url_data": "{\"response_type\":\"code\",\"scope\":\"openid\"}",
+  "sign_ups": ""
+}
+```
+
+The target `Social Login Key.client_secret` is required by Frappe but must not
+be placed in a ConfigMap, action log, browser response, evidence file, or
+termination message. Platform must provide it to the Bench Command Job as a
+short-lived Kubernetes Secret mounted read-only at:
+
+```text
+/lenscloud/secrets/client_secret
+```
+
+The request ConfigMap must contain only non-secret Social Login Key fields and
+must set:
+
+```json
+{
+  "args": {
+    "provider": "nectar",
+    "provider_name": "Nectar",
+    "client_id": "lavpf2erok",
+    "client_secret_source": "mounted_file",
+    "base_url": "https://nectar.lmnas.com",
+    "authorize_url": "/api/method/frappe.integrations.oauth2.authorize",
+    "access_token_url": "/api/method/frappe.integrations.oauth2.get_token",
+    "redirect_url": "https://qsgbcz.lmnas.com/api/method/frappe.integrations.oauth2_logins.custom/nectar",
+    "api_endpoint": "/api/method/frappe.integrations.oauth2.openid_profile",
+    "auth_url_data": {"response_type": "code", "scope": "openid"},
+    "sign_ups": "",
+    "enable_social_login": true
+  }
+}
+```
+
+`oauth.status` must not require the secret mount. `oauth.configure` requires
+the secret mount and must write only sanitized result fields.
+
+Infra has implemented `oauth.status` and `oauth.configure` in runner source,
+published the runner image, and pinned the repo admission manifest to:
+
+```text
+ghcr.io/lmnaslimited/lenscloud-bench-command-runner@sha256:31973edd01e9c6ea75f2a3b4ef323d5ff643fcec97b2d49b6da9d9d10b7f7580
+```
+
+Platform must not enable OAuth commands until Infra applies the admission
+update to the cluster and records live evidence from
+`scripts/65-verify-cua-oauth-runner.sh`.
 
 ## Result Shape
 
@@ -263,7 +352,17 @@ ConfigMaps, or evidence.
 - no credential leakage;
 - cleanup of request ConfigMap, Job, and terminal Pod.
 
-`INF-022` and `INF-023` must stay blocked until `INF-021` is complete.
+`INF-022` must prove on one real Platform-managed Bench/Site:
+
+- `oauth.status` before configuration;
+- `oauth.configure` with the client secret provided only by mounted Secret file;
+- `oauth.status` after configuration;
+- direct `client_secret` request arg rejection;
+- non-OAuth Secret-volume Job admission denial;
+- no credential leakage;
+- cleanup of request ConfigMaps, Jobs, temporary Secret, and terminal Pods.
+
+`INF-023` must stay blocked until `INF-022` live verification is complete.
 
 ## Remaining Future DNS/SSO Scope
 

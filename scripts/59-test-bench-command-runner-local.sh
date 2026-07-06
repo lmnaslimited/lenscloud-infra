@@ -9,7 +9,8 @@ trap cleanup EXIT
 
 bench_path="$tmpdir/frappe-bench"
 site="runner-test.localhost"
-mkdir -p "$bench_path/sites/$site" "$tmpdir/request"
+mkdir -p "$bench_path/sites/$site" "$tmpdir/request" "$tmpdir/oauth-secret"
+printf 'must-not-leak-oauth-secret\n' >"$tmpdir/oauth-secret/client_secret"
 cat >"$bench_path/sites/$site/site_config.json" <<'JSON'
 {
  "db_name": "runner_test",
@@ -30,6 +31,7 @@ run_command() {
   BENCH_PATH="$bench_path" \
   BENCH_COMMAND_REQUEST="$request_path" \
   BENCH_COMMAND_TERMINATION_LOG="$termination_path" \
+  LENS_COMMAND_OAUTH_CLIENT_SECRET_PATH="$tmpdir/oauth-secret/client_secret" \
   LENS_COMMAND_FAKE_FRAPPE_SETUP=1 \
     python3 bench-command-runner/runner.py >/dev/null
   local actual=$?
@@ -39,7 +41,7 @@ run_command() {
     cat "$termination_path" >&2 || true
     exit 1
   fi
-  if grep -E 'must-not-leak|password|token|private|secret' "$termination_path" >/dev/null; then
+  if grep -E 'must-not-leak|db_password|admin_password|client_secret|token=|private_key|BEGIN ' "$termination_path" >/dev/null; then
     echo "Sensitive content detected in ${name} termination summary." >&2
     cat "$termination_path" >&2
     exit 1
@@ -138,6 +140,25 @@ run_command setup_complete_idempotent \
 
 run_command setup_sensitive_reject \
   "{\"apiVersion\":\"lenscloud.io/v1\",\"kind\":\"BenchCommand\",\"commandId\":\"local-13\",\"command\":\"site_setup.complete\",${base_target},\"args\":{\"language\":\"English\",\"admin_password\":\"must-not-leak\"},\"timeoutSeconds\":60}" \
+  1 | grep '"code":"INVALID_ARGUMENTS"' >/dev/null
+
+run_command oauth_status_missing \
+  "{\"apiVersion\":\"lenscloud.io/v1\",\"kind\":\"BenchCommand\",\"commandId\":\"local-14\",\"command\":\"oauth.status\",${base_target},\"args\":{\"provider\":\"nectar\"},\"timeoutSeconds\":60}" |
+  grep -F '"summary":"Social login is not configured"' >/dev/null
+
+oauth_args='{"provider":"nectar","provider_name":"Nectar","social_login_provider":"Custom","enable_social_login":true,"client_id":"local-client-id","client_secret_source":"mounted_file","base_url":"https://nectar.lmnas.com","authorize_url":"/api/method/frappe.integrations.oauth2.authorize","access_token_url":"/api/method/frappe.integrations.oauth2.get_token","redirect_url":"https://runner-test.localhost/api/method/frappe.integrations.oauth2_logins.custom/nectar","api_endpoint":"/api/method/frappe.integrations.oauth2.openid_profile","custom_base_url":true,"auth_url_data":{"response_type":"code","scope":"openid"},"sign_ups":""}'
+
+run_command oauth_configure \
+  "{\"apiVersion\":\"lenscloud.io/v1\",\"kind\":\"BenchCommand\",\"commandId\":\"local-15\",\"command\":\"oauth.configure\",${base_target},\"args\":${oauth_args},\"timeoutSeconds\":60}" |
+  grep -F '"summary":"Social login configured"' >/dev/null
+
+run_command oauth_status_enabled \
+  "{\"apiVersion\":\"lenscloud.io/v1\",\"kind\":\"BenchCommand\",\"commandId\":\"local-16\",\"command\":\"oauth.status\",${base_target},\"args\":{\"provider_name\":\"Nectar\"},\"timeoutSeconds\":60}" |
+  grep -F '"value":"Enabled"' |
+  grep -F '"secret_configured":true' >/dev/null
+
+run_command oauth_secret_arg_reject \
+  "{\"apiVersion\":\"lenscloud.io/v1\",\"kind\":\"BenchCommand\",\"commandId\":\"local-17\",\"command\":\"oauth.configure\",${base_target},\"args\":{\"provider\":\"nectar\",\"provider_name\":\"Nectar\",\"client_secret\":\"must-not-leak-oauth-secret\"},\"timeoutSeconds\":60}" \
   1 | grep '"code":"INVALID_ARGUMENTS"' >/dev/null
 
 echo "Bench command runner local verification passed."

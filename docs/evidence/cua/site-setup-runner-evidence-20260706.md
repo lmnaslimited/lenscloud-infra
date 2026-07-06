@@ -165,5 +165,8 @@ The runner returns sanitized errors only. It does not include:
 
 - Platform may integrate `site_setup.status` and `site_setup.complete` through
   the Bench Command Job/API contract.
-- OAuth, user, and site access commands remain unsupported until `INF-022` and
-  `INF-023` are implemented and live-verified.
+- OAuth runner source/local verification is now tracked under `INF-022`; the
+  image is published and repo-pinned, but admission apply and live verification
+  are still required before Platform enables it.
+- User and site access commands remain unsupported until `INF-023` is
+  implemented and live-verified.

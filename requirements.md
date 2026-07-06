@@ -67,9 +67,12 @@ Provision and bootstrap the Kubernetes substrate that LensCloud Platform will ma
 - Provide Central User Access Site bootstrap and SSO support through the same
   Bench Command pattern. Setup wizard support must use native Frappe setup
   APIs and be proven first through `site_setup.status` and
-  `site_setup.complete`. OAuth and user/access commands remain blocked until
-  setup proof is complete and must prefer standard Frappe APIs before adding a
-  branding app extension.
+  `site_setup.complete`. OAuth setup must treat the Platform-side `OAuth
+  Client` as Platform-owned and configure only the target Site `Social Login
+  Key` through the Infra runner. OAuth client secrets must use a short-lived
+  Secret mount and must not be placed in ConfigMaps, action logs, evidence, or
+  browser responses. User/access commands must prefer standard Frappe APIs
+  before adding a branding app extension.
 - Permit Platform to clean up only terminal Platform-labelled Bench Command Pods
   in approved runtime namespaces after sanitized result capture, while denying
   pod logs, unlabelled/running Pod deletion, default namespace cleanup, and

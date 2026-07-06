@@ -85,16 +85,18 @@ Infra has added production runner source for safe Site Control operations in:
 bench-command-runner/
 ```
 
-The current runner image is published and admission-pinned:
+The current runner image is published and pinned in the repo admission
+manifest:
 
 ```text
-ghcr.io/lmnaslimited/lenscloud-bench-command-runner@sha256:2905fb71dfb449258214a7b76016a67d9b98bd66ea378394f98d791ab293dad5
+ghcr.io/lmnaslimited/lenscloud-bench-command-runner@sha256:31973edd01e9c6ea75f2a3b4ef323d5ff643fcec97b2d49b6da9d9d10b7f7580
 ```
 
-Live positive proof for the runner capability passed on 2026-06-28 after the
-GHCR package was made publicly pullable by the EU worker. The current `v0.1.8`
+Live positive proof for the original runner capability passed on 2026-06-28
+after the GHCR package was made publicly pullable by the EU worker. The `v0.1.8`
 image with the display and metadata-only `backup.status` contracts was
-live-verified on 2026-06-30.
+live-verified on 2026-06-30. The `v0.1.9` image above includes OAuth source and
+must still be applied and live-verified before Platform enables OAuth.
 
 The `site_setup.status` and `site_setup.complete` commands are implemented and
 live-verified through `INF-021`. Platform may integrate them through the Bench
@@ -185,9 +187,19 @@ metadata:
 ```
 
 The admission policy denies Platform-created Jobs that are not labelled as
-`bench-command`, use an unsupported command family, mount Secrets, use envFrom,
-run privileged, use a service-account token, use more than one container, or
-have `restartPolicy` other than `Never`.
+`bench-command`, use an unsupported command family, use envFrom, run
+privileged, use a service-account token, use more than one container, or have
+`restartPolicy` other than `Never`.
+
+Secret-volume rule:
+
+- all non-OAuth command families must not mount Secrets;
+- `oauth.configure` may mount exactly one Secret volume named
+  `oauth-client-secret`;
+- the Secret volume must expose only the key `client_secret`;
+- it must be mounted read-only at `/lenscloud/secrets`;
+- the request ConfigMap, termination message, action logs, evidence, and
+  browser responses must never contain the OAuth client secret value.
 
 ## Job Shape
 
@@ -202,11 +214,13 @@ spec:
       restartPolicy: Never
       containers:
         - name: bench-command
-          image: ghcr.io/lmnaslimited/lenscloud-bench-command-runner@sha256:2905fb71dfb449258214a7b76016a67d9b98bd66ea378394f98d791ab293dad5
+          image: ghcr.io/lmnaslimited/lenscloud-bench-command-runner@sha256:31973edd01e9c6ea75f2a3b4ef323d5ff643fcec97b2d49b6da9d9d10b7f7580
 ```
 
 The Job may read the request ConfigMap and non-secret ConfigMaps required for
-the command. It must not mount Kubernetes Secrets or dump environment variables.
+the command. Non-OAuth commands must not mount Kubernetes Secrets or dump
+environment variables. `oauth.configure` may mount only the narrowly approved
+short-lived client-secret Secret described above.
 
 The admission policy currently allows only:
 
@@ -406,8 +420,12 @@ runtime enforcement for that control.
 
 CUA Site bootstrap and SSO commands use the same Bench Command Job/API pattern.
 The `site_setup` runner commands are implemented, admission-pinned, and
-live-verified. OAuth, user, and site access commands remain unsupported until
-their own gates are implemented and verified.
+live-verified. `INF-022` adds target-Site Social Login Key management for the
+Platform-owned OAuth Client. Runner source, image publication, repo digest pin,
+and local verification are complete, but Platform must not enable OAuth
+commands until Infra applies the admission update and records live verification
+with `scripts/65-verify-cua-oauth-runner.sh`. User and site access commands
+remain unsupported until their own gates are implemented and verified.
 
 Canonical Infra gates:
 
@@ -427,9 +445,9 @@ Planned CUA command families:
 | Family | Commands | Current status | Gate |
 | --- | --- | --- | --- |
 | `site_setup` | `site_setup.status`, `site_setup.complete` | Supported / live-verified | Uses native Frappe setup APIs; see `INF-021` evidence |
-| `oauth` | `oauth.status`, `oauth.configure` | Unsupported / planned | `INF-022`; use standard Frappe APIs first |
-| `user` | `user.ensure`, `user.disable`, `user.roles.set` | Unsupported / planned | `INF-023`; use standard Frappe APIs first |
-| `site_access` | `site_access.status` | Unsupported / planned | `INF-023`; use standard Frappe APIs first |
+| `oauth` | `oauth.status`, `oauth.configure` | Source/local verified; image published and repo-pinned; pending admission apply and live verification | `INF-022`; Platform owns OAuth Client, Infra runner owns target Site Social Login Key |
+| `user` | `user.ensure`, `user.disable`, `user.roles.set` | Unsupported / blocked | `INF-023`; wait for OAuth live verification, then use standard Frappe APIs first |
+| `site_access` | `site_access.status` | Unsupported / blocked | `INF-023`; wait for OAuth live verification, then use standard Frappe APIs first |
 
 The setup wizard commands should use native Frappe v16 APIs:
 
@@ -439,13 +457,21 @@ frappe.client_cache.get_doc("Installed Applications")
 frappe.desk.page.setup_wizard.setup_wizard.setup_complete
 ```
 
-OAuth and user/access work should use standard Frappe APIs or bench-executed
-standard Frappe methods first. Add a branding app for those areas only if
-standard APIs prove insufficient and the gap is documented.
+OAuth setup uses the target Site's standard Frappe `Social Login Key` DocType.
+Platform owns the Platform-side `OAuth Client` and passes non-secret Social
+Login configuration through the request ConfigMap. The OAuth client secret must
+be mounted as a short-lived Kubernetes Secret at
+`/lenscloud/secrets/client_secret` and must never appear in ConfigMaps,
+termination messages, action logs, evidence, or browser responses.
+
+User/access work should use standard Frappe APIs or bench-executed standard
+Frappe methods first. Add a branding app only if standard APIs prove
+insufficient and the gap is documented.
 
 Platform may enable `site_setup` for customer workflows after consuming the
-dedicated `INF-021` handoff. OAuth, user, and site access commands must
-continue to return `Unsupported` with `COMMAND_UNSUPPORTED`.
+dedicated `INF-021` handoff. OAuth must remain disabled in Platform until
+`INF-022` live verification evidence is published. User and site access
+commands must continue to return `Unsupported` with `COMMAND_UNSUPPORTED`.
 
 ### Backup Status Display
 

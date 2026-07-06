@@ -12,10 +12,16 @@ and live verification passed against a real Platform-managed Bench/Site.
 Platform may integrate `site_setup.status` and `site_setup.complete` through
 the existing Bench Command Job/API path.
 
-Published runner:
+Setup live verification used this runner:
 
 ```text
 ghcr.io/lmnaslimited/lenscloud-bench-command-runner@sha256:2905fb71dfb449258214a7b76016a67d9b98bd66ea378394f98d791ab293dad5
+```
+
+Current runner for new Platform work is published at:
+
+```text
+ghcr.io/lmnaslimited/lenscloud-bench-command-runner@sha256:31973edd01e9c6ea75f2a3b4ef323d5ff643fcec97b2d49b6da9d9d10b7f7580
 ```
 
 ## Implemented Runner Commands
@@ -138,7 +144,8 @@ passwords, tokens, private keys, or raw setup documents in request args.
 
 Platform should:
 
-- keep OAuth, user, and site access commands marked `Unsupported`;
+- keep OAuth disabled until `INF-022` live evidence is published;
+- keep user and site access commands marked `Unsupported`;
 - create request ConfigMaps and Jobs through the existing Python Kubernetes API
   Bench Command path;
 - mount the target Bench sites PVC at `/home/frappe/frappe-bench/sites`;
@@ -190,5 +197,7 @@ Cleanup proof: no resources found with that prefix
 
 ## Remaining Infra Gaps
 
-- OAuth commands remain `Unsupported` until `INF-022`.
+- OAuth runner source/local verification is complete under `INF-022`, and the
+  runner image is published/repo-pinned, but Platform must keep OAuth commands
+  disabled until Infra applies admission and records live verification.
 - User and site access commands remain `Unsupported` until `INF-023`.

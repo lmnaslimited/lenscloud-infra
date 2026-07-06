@@ -39,6 +39,8 @@ COMMANDS = {
     "cors.allowlist.get",
     "site_setup.status",
     "site_setup.complete",
+    "oauth.status",
+    "oauth.configure",
     "bench_test.trigger",
     "bench_test.status",
     "latp.trigger",
@@ -68,8 +70,15 @@ SENSITIVE_KEY_RE = re.compile(
     r"(password|passwd|secret|token|api[_-]?key|private[_-]?key|credential|cookie|authorization)",
     re.IGNORECASE,
 )
+SAFE_STATUS_KEYS = {
+    "access_token_url",
+    "secret_configured",
+}
 SITE_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]{0,190}$")
 NAME_RE = re.compile(r"^[a-z0-9][a-z0-9-]{0,190}$")
+PROVIDER_RE = re.compile(r"^[a-z0-9][a-z0-9_ -]{0,80}$")
+URL_RE = re.compile(r"^https://[A-Za-z0-9][A-Za-z0-9_.:/?&=%#@+~,-]*$")
+RELATIVE_ENDPOINT_RE = re.compile(r"^/[A-Za-z0-9_./?&=%#@+~,-]*$")
 
 
 class CommandError(Exception):
@@ -91,13 +100,16 @@ TERMINATION_PATH = Path(os.environ.get("BENCH_COMMAND_TERMINATION_LOG", "/dev/te
 BENCH_PYTHON = Path(os.environ.get("BENCH_PYTHON", str(BENCH_PATH / "env" / "bin" / "python")))
 FAKE_FRAPPE_SETUP = os.environ.get("LENS_COMMAND_FAKE_FRAPPE_SETUP") == "1"
 MAX_SETUP_ARGS_BYTES = int(os.environ.get("LENS_COMMAND_MAX_SETUP_ARGS_BYTES", "16384"))
+OAUTH_CLIENT_SECRET_PATH = Path(
+    os.environ.get("LENS_COMMAND_OAUTH_CLIENT_SECRET_PATH", "/lenscloud/secrets/client_secret")
+)
 
 
 def sanitize(value: Any) -> Any:
     if isinstance(value, dict):
         redacted = {}
         for key, item in value.items():
-            if SENSITIVE_KEY_RE.search(str(key)):
+            if str(key) not in SAFE_STATUS_KEYS and SENSITIVE_KEY_RE.search(str(key)):
                 redacted[key] = "[REDACTED]"
             else:
                 redacted[key] = sanitize(item)
@@ -121,6 +133,44 @@ def contains_sensitive_key(value: Any) -> bool:
     elif isinstance(value, list):
         return any(contains_sensitive_key(item) for item in value)
     return False
+
+
+def scrub_provider(value: str) -> str:
+    return re.sub(r"[^a-z0-9]+", "_", value.lower()).strip("_")
+
+
+def require_string(args: dict[str, Any], key: str, *, max_length: int = 500) -> str:
+    value = args.get(key)
+    if not isinstance(value, str) or not value.strip():
+        raise CommandError("INVALID_ARGUMENTS", f"oauth.configure requires {key}")
+    value = value.strip()
+    if len(value) > max_length:
+        raise CommandError("INVALID_ARGUMENTS", f"oauth.configure {key} is too long")
+    return value
+
+
+def optional_string(args: dict[str, Any], key: str, *, max_length: int = 500) -> str:
+    value = args.get(key, "")
+    if value is None:
+        return ""
+    if not isinstance(value, str):
+        raise CommandError("INVALID_ARGUMENTS", f"oauth.configure {key} must be a string")
+    value = value.strip()
+    if len(value) > max_length:
+        raise CommandError("INVALID_ARGUMENTS", f"oauth.configure {key} is too long")
+    return value
+
+
+def require_endpoint(value: str, key: str) -> str:
+    if not (URL_RE.match(value) or RELATIVE_ENDPOINT_RE.match(value)):
+        raise CommandError("INVALID_ARGUMENTS", f"oauth.configure {key} must be https URL or relative endpoint")
+    return value
+
+
+def require_https_url(value: str, key: str) -> str:
+    if not URL_RE.match(value):
+        raise CommandError("INVALID_ARGUMENTS", f"oauth.configure {key} must be an https URL")
+    return value
 
 
 def result(
@@ -357,6 +407,22 @@ def fake_setup_state(site: str) -> tuple[Path, dict[str, Any]]:
     return state_path, {"layout": layout, "setup_complete": bool(state.get("setup_complete"))}
 
 
+def fake_oauth_state(site: str) -> tuple[Path, dict[str, Any]]:
+    site_root, layout = site_root_path(site)
+    state_path = site_root / ".lenscloud_oauth_state.json"
+    if state_path.exists():
+        try:
+            state = json.loads(state_path.read_text(encoding="utf-8"))
+        except json.JSONDecodeError:
+            state = {}
+    else:
+        state = {}
+    if not isinstance(state, dict):
+        state = {}
+    state.setdefault("_layout", layout)
+    return state_path, state
+
+
 def validate_setup_args(args: dict[str, Any]) -> dict[str, Any]:
     setup_args = args.get("setup_args", args)
     if not isinstance(setup_args, dict):
@@ -367,6 +433,104 @@ def validate_setup_args(args: dict[str, Any]) -> dict[str, Any]:
     if contains_sensitive_key(setup_args):
         raise CommandError("INVALID_ARGUMENTS", "site_setup.complete args contain a sensitive key")
     return setup_args
+
+
+def validate_oauth_provider(args: dict[str, Any]) -> str:
+    provider = str(args.get("provider") or "").strip().lower()
+    if not provider:
+        provider_name = str(args.get("provider_name") or "").strip()
+        provider = scrub_provider(provider_name)
+    if not provider or not PROVIDER_RE.match(provider) or provider != scrub_provider(provider):
+        raise CommandError("INVALID_ARGUMENTS", "oauth provider must be a safe lower-case provider key")
+    return provider
+
+
+def validate_oauth_config_args(args: dict[str, Any]) -> dict[str, Any]:
+    allowed_keys = {
+        "provider",
+        "provider_name",
+        "social_login_provider",
+        "enable_social_login",
+        "client_id",
+        "client_secret_source",
+        "base_url",
+        "authorize_url",
+        "access_token_url",
+        "redirect_url",
+        "api_endpoint",
+        "custom_base_url",
+        "auth_url_data",
+        "sign_ups",
+        "api_endpoint_args",
+        "user_id_property",
+        "icon",
+    }
+    unknown_keys = set(args) - allowed_keys
+    if unknown_keys:
+        raise CommandError("INVALID_ARGUMENTS", "oauth.configure contains unsupported args")
+    if "client_secret" in args:
+        raise CommandError("INVALID_ARGUMENTS", "oauth.configure args must not contain secret values")
+
+    provider = validate_oauth_provider(args)
+    provider_name = require_string(args, "provider_name", max_length=140)
+    if scrub_provider(provider_name) != provider:
+        raise CommandError("INVALID_ARGUMENTS", "provider must match scrubbed provider_name")
+
+    auth_url_data = args.get("auth_url_data", {"response_type": "code", "scope": "openid"})
+    if isinstance(auth_url_data, dict):
+        auth_url_data = json.dumps(auth_url_data, sort_keys=True, separators=(",", ":"))
+    if not isinstance(auth_url_data, str):
+        raise CommandError("INVALID_ARGUMENTS", "auth_url_data must be an object or JSON string")
+    try:
+        parsed_auth_url_data = json.loads(auth_url_data)
+    except json.JSONDecodeError as exc:
+        raise CommandError("INVALID_ARGUMENTS", "auth_url_data must be valid JSON") from exc
+    if not isinstance(parsed_auth_url_data, dict):
+        raise CommandError("INVALID_ARGUMENTS", "auth_url_data must be a JSON object")
+    if contains_sensitive_key(parsed_auth_url_data):
+        raise CommandError("INVALID_ARGUMENTS", "auth_url_data must not contain secret values")
+
+    client_secret_source = args.get("client_secret_source", "mounted_file")
+    if client_secret_source != "mounted_file":
+        raise CommandError("INVALID_ARGUMENTS", "oauth.configure requires client_secret_source=mounted_file")
+
+    sign_ups = optional_string(args, "sign_ups", max_length=10)
+    if sign_ups not in {"", "Allow", "Deny"}:
+        raise CommandError("INVALID_ARGUMENTS", "sign_ups must be empty, Allow, or Deny")
+
+    config = {
+        "provider": provider,
+        "provider_name": provider_name,
+        "social_login_provider": optional_string(args, "social_login_provider", max_length=40) or "Custom",
+        "enable_social_login": 1 if bool(args.get("enable_social_login", True)) else 0,
+        "client_id": require_string(args, "client_id", max_length=255),
+        "base_url": require_https_url(require_string(args, "base_url", max_length=500), "base_url"),
+        "authorize_url": require_endpoint(require_string(args, "authorize_url", max_length=500), "authorize_url"),
+        "access_token_url": require_endpoint(require_string(args, "access_token_url", max_length=500), "access_token_url"),
+        "redirect_url": require_https_url(require_string(args, "redirect_url", max_length=500), "redirect_url"),
+        "api_endpoint": require_endpoint(require_string(args, "api_endpoint", max_length=500), "api_endpoint"),
+        "custom_base_url": 1 if bool(args.get("custom_base_url", True)) else 0,
+        "auth_url_data": auth_url_data,
+        "sign_ups": sign_ups,
+    }
+    optional_fields = {
+        "api_endpoint_args": optional_string(args, "api_endpoint_args", max_length=2000),
+        "user_id_property": optional_string(args, "user_id_property", max_length=140),
+        "icon": optional_string(args, "icon", max_length=500),
+    }
+    config.update({key: value for key, value in optional_fields.items() if value})
+    return config
+
+
+def read_oauth_client_secret() -> str:
+    if not OAUTH_CLIENT_SECRET_PATH.is_file():
+        raise CommandError("INVALID_ARGUMENTS", "oauth.configure requires mounted client_secret file")
+    secret = OAUTH_CLIENT_SECRET_PATH.read_text(encoding="utf-8").strip()
+    if not secret:
+        raise CommandError("INVALID_ARGUMENTS", "mounted client_secret file is empty")
+    if len(secret.encode("utf-8")) > 4096:
+        raise CommandError("INVALID_ARGUMENTS", "mounted client_secret file is too large")
+    return secret
 
 
 FRAPPE_SETUP_SCRIPT = r"""
@@ -430,6 +594,83 @@ finally:
 """
 
 
+FRAPPE_OAUTH_SCRIPT = r"""
+import json
+import sys
+
+site = sys.argv[1]
+sites_path = sys.argv[2]
+operation = sys.argv[3]
+payload = json.loads(sys.stdin.read() or "{}")
+
+import frappe
+
+frappe.init(site=site, sites_path=sites_path)
+frappe.connect()
+
+try:
+    provider = payload["provider"]
+
+    def status_payload():
+        exists = bool(frappe.db.exists("Social Login Key", provider))
+        if not exists:
+            return {
+                "configured": False,
+                "enabled": False,
+                "provider": provider,
+                "secret_configured": False,
+            }
+        doc = frappe.get_doc("Social Login Key", provider)
+        secret_configured = bool(doc.get_password("client_secret", raise_exception=False))
+        return {
+            "configured": True,
+            "enabled": bool(doc.enable_social_login),
+            "provider": doc.name,
+            "provider_name": doc.provider_name,
+            "social_login_provider": doc.social_login_provider,
+            "client_id": doc.client_id,
+            "base_url": doc.base_url,
+            "authorize_url": doc.authorize_url,
+            "access_token_url": doc.access_token_url,
+            "redirect_url": doc.redirect_url,
+            "api_endpoint": doc.api_endpoint,
+            "custom_base_url": bool(doc.custom_base_url),
+            "sign_ups": doc.sign_ups or "",
+            "secret_configured": secret_configured,
+        }
+
+    if operation == "status":
+        print(json.dumps(status_payload(), sort_keys=True, separators=(",", ":")))
+    elif operation == "configure":
+        config = payload["config"]
+        secret = payload["client_secret"]
+        before = status_payload()
+        if frappe.db.exists("Social Login Key", provider):
+            doc = frappe.get_doc("Social Login Key", provider)
+        else:
+            doc = frappe.new_doc("Social Login Key")
+            doc.name = provider
+        for key, value in config.items():
+            if key != "provider":
+                doc.set(key, value)
+        doc.client_secret = secret
+        if doc.is_new():
+            doc.insert(ignore_permissions=True)
+        else:
+            doc.save(ignore_permissions=True)
+        frappe.db.commit()
+        after = status_payload()
+        after["changed"] = before != after
+        print(json.dumps(after, sort_keys=True, separators=(",", ":")))
+    else:
+        raise RuntimeError("unsupported oauth operation")
+finally:
+    if getattr(frappe.local, "db", None):
+        frappe.db.close()
+    frappe.destroy()
+"""
+
+
 def run_frappe_setup(site: str, operation: str, args: dict[str, Any], timeout: int) -> dict[str, Any]:
     if FAKE_FRAPPE_SETUP:
         state_path, state = fake_setup_state(site)
@@ -478,6 +719,199 @@ def run_frappe_setup(site: str, operation: str, args: dict[str, Any], timeout: i
     if not isinstance(payload, dict):
         raise CommandError("RUNNER_FAILED", "site setup command returned invalid result")
     return payload
+
+
+def oauth_display(state: dict[str, Any]) -> dict[str, Any]:
+    configured = bool(state.get("configured"))
+    enabled = bool(state.get("enabled"))
+    if not configured:
+        value = "Missing"
+    elif enabled:
+        value = "Enabled"
+    else:
+        value = "Disabled"
+    return {
+        "label": "Social login",
+        "value": value,
+        "kind": "oauth-status",
+        "rawValue": {
+            "configured": configured,
+            "enabled": enabled,
+            "provider": state.get("provider"),
+            "provider_name": state.get("provider_name"),
+            "secret_configured": bool(state.get("secret_configured")),
+        },
+        "safe": True,
+    }
+
+
+def run_frappe_oauth(site: str, operation: str, payload: dict[str, Any], timeout: int) -> dict[str, Any]:
+    if FAKE_FRAPPE_SETUP:
+        state_path, state = fake_oauth_state(site)
+        provider = str(payload["provider"])
+        existing = state.get(provider) if isinstance(state.get(provider), dict) else None
+        if operation == "status":
+            if not existing:
+                return {
+                    "configured": False,
+                    "enabled": False,
+                    "provider": provider,
+                    "secret_configured": False,
+                    "layout": state.get("_layout"),
+                }
+            safe_existing = dict(existing)
+            safe_existing["layout"] = state.get("_layout")
+            return safe_existing
+        if operation == "configure":
+            config = dict(payload["config"])
+            before = dict(existing) if existing else None
+            configured = {
+                "configured": True,
+                "enabled": bool(config.get("enable_social_login")),
+                "provider": provider,
+                "provider_name": config.get("provider_name"),
+                "social_login_provider": config.get("social_login_provider"),
+                "client_id": config.get("client_id"),
+                "base_url": config.get("base_url"),
+                "authorize_url": config.get("authorize_url"),
+                "access_token_url": config.get("access_token_url"),
+                "redirect_url": config.get("redirect_url"),
+                "api_endpoint": config.get("api_endpoint"),
+                "custom_base_url": bool(config.get("custom_base_url")),
+                "sign_ups": config.get("sign_ups") or "",
+                "secret_configured": bool(payload.get("client_secret")),
+            }
+            state[provider] = configured
+            state_path.write_text(json.dumps(state, sort_keys=True, separators=(",", ":")) + "\n", encoding="utf-8")
+            configured["changed"] = before != configured
+            configured["layout"] = state.get("_layout")
+            return configured
+        raise CommandError("COMMAND_UNSUPPORTED", "unsupported oauth operation", "Unsupported")
+
+    if not BENCH_PYTHON.is_file():
+        raise CommandError("RUNNER_FAILED", "bench Python environment was not found")
+
+    Path("/home/frappe/logs").mkdir(parents=True, exist_ok=True)
+
+    with prepared_frappe_sites_path(site) as temp_sites:
+        env = dict(os.environ)
+        env["FRAPPE_STREAM_LOGGING"] = "1"
+        try:
+            completed = subprocess.run(
+                [str(BENCH_PYTHON), "-c", FRAPPE_OAUTH_SCRIPT, site, str(temp_sites), operation],
+                input=json.dumps(payload, sort_keys=True, separators=(",", ":")),
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                cwd=str(BENCH_PATH),
+                env=env,
+                timeout=timeout,
+                check=False,
+            )
+        except subprocess.TimeoutExpired as exc:
+            raise CommandError("TIMEOUT", "oauth command timed out", "Timed Out") from exc
+
+    if completed.returncode != 0:
+        raise CommandError("RUNNER_FAILED", "oauth command failed with sanitized error")
+
+    output_lines = [line for line in completed.stdout.splitlines() if line.strip()]
+    if not output_lines:
+        raise CommandError("RUNNER_FAILED", "oauth command did not return a result")
+    try:
+        result_payload = json.loads(output_lines[-1])
+    except json.JSONDecodeError as exc:
+        raise CommandError("RUNNER_FAILED", "oauth command returned invalid JSON") from exc
+    if not isinstance(result_payload, dict):
+        raise CommandError("RUNNER_FAILED", "oauth command returned invalid result")
+    return result_payload
+
+
+def command_oauth(command: str, target: dict[str, Any], args: dict[str, Any]) -> dict[str, Any]:
+    site = str(target["site"])
+    timeout = request_timeout_seconds()
+
+    if command == "oauth.status":
+        provider = validate_oauth_provider(args)
+        unsupported_args = set(args) - {"provider", "provider_name"}
+        if unsupported_args:
+            raise CommandError("INVALID_ARGUMENTS", "oauth.status accepts only provider or provider_name")
+        state = run_frappe_oauth(site, "status", {"provider": provider}, timeout)
+        configured = bool(state.get("configured"))
+        enabled = bool(state.get("enabled"))
+        return result(
+            phase="Succeeded",
+            command=command,
+            target=target,
+            summary=(
+                "Social login is enabled"
+                if configured and enabled
+                else "Social login is configured but disabled"
+                if configured
+                else "Social login is not configured"
+            ),
+            changed=False,
+            details={
+                "provider": provider,
+                "configured": configured,
+                "enabled": enabled,
+                "provider_name": state.get("provider_name"),
+                "social_login_provider": state.get("social_login_provider"),
+                "client_id": state.get("client_id"),
+                "base_url": state.get("base_url"),
+                "authorize_url": state.get("authorize_url"),
+                "access_token_url": state.get("access_token_url"),
+                "redirect_url": state.get("redirect_url"),
+                "api_endpoint": state.get("api_endpoint"),
+                "custom_base_url": bool(state.get("custom_base_url")),
+                "sign_ups": state.get("sign_ups") or "",
+                "secret_configured": bool(state.get("secret_configured")),
+            },
+            display=oauth_display(state),
+        )
+
+    if command == "oauth.configure":
+        config = validate_oauth_config_args(args)
+        client_secret = read_oauth_client_secret()
+        state = run_frappe_oauth(
+            site,
+            "configure",
+            {
+                "provider": config["provider"],
+                "config": config,
+                "client_secret": client_secret,
+            },
+            timeout,
+        )
+        configured = bool(state.get("configured"))
+        enabled = bool(state.get("enabled"))
+        changed = bool(state.get("changed"))
+        return result(
+            phase="Succeeded" if configured else "Failed",
+            command=command,
+            target=target,
+            summary="Social login configured" if configured else "Social login was not configured",
+            changed=changed,
+            code=None if configured else "RUNNER_FAILED",
+            details={
+                "provider": config["provider"],
+                "configured": configured,
+                "enabled": enabled,
+                "provider_name": state.get("provider_name"),
+                "social_login_provider": state.get("social_login_provider"),
+                "client_id": state.get("client_id"),
+                "base_url": state.get("base_url"),
+                "authorize_url": state.get("authorize_url"),
+                "access_token_url": state.get("access_token_url"),
+                "redirect_url": state.get("redirect_url"),
+                "api_endpoint": state.get("api_endpoint"),
+                "custom_base_url": bool(state.get("custom_base_url")),
+                "sign_ups": state.get("sign_ups") or "",
+                "secret_configured": bool(state.get("secret_configured")),
+            },
+            display=oauth_display(state),
+        )
+
+    raise CommandError("COMMAND_UNSUPPORTED", "unsupported oauth command", "Unsupported")
 
 
 def ensure_key_allowed(key: str) -> None:
@@ -743,6 +1177,8 @@ def dispatch(command: str, target: dict[str, Any], args: dict[str, Any]) -> dict
         return command_cors(command, target, args)
     if command.startswith("site_setup."):
         return command_site_setup(command, target, args)
+    if command.startswith("oauth."):
+        return command_oauth(command, target, args)
     raise CommandError("COMMAND_UNSUPPORTED", "command is contracted but not implemented", "Unsupported")
 
 

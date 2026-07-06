@@ -85,6 +85,8 @@ Supporting SOPs:
 - [docs/cua-site-bootstrap-sso-implementation-prompt-20260706.md](./docs/cua-site-bootstrap-sso-implementation-prompt-20260706.md)
 - [docs/evidence/cua/site-setup-runner-evidence-20260706.md](./docs/evidence/cua/site-setup-runner-evidence-20260706.md)
 - [docs/handoffs/platform/cua-site-setup-runner-handoff-20260706.md](./docs/handoffs/platform/cua-site-setup-runner-handoff-20260706.md)
+- [docs/evidence/cua/oauth-runner-evidence-20260706.md](./docs/evidence/cua/oauth-runner-evidence-20260706.md)
+- [docs/handoffs/platform/cua-oauth-runner-handoff-20260706.md](./docs/handoffs/platform/cua-oauth-runner-handoff-20260706.md)
 - [docs/bench-command-job-evidence-20260625.md](./docs/bench-command-job-evidence-20260625.md)
 - [docs/bench-command-production-runner-evidence-20260627.md](./docs/bench-command-production-runner-evidence-20260627.md)
 - [docs/bench-command-pod-cleanup-rbac-evidence-20260702.md](./docs/bench-command-pod-cleanup-rbac-evidence-20260702.md)
