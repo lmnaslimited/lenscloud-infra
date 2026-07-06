@@ -114,14 +114,14 @@ Build example:
 
 ```bash
 docker build \
-  -t ghcr.io/lmnaslimited/lenscloud-bench-command-runner:v0.1.5 \
+  -t ghcr.io/lmnaslimited/lenscloud-bench-command-runner:v0.1.6 \
   bench-command-runner
 ```
 
 Published image:
 
 ```text
-ghcr.io/lmnaslimited/lenscloud-bench-command-runner@sha256:eebfa0199c328207b14a949fa6232954a203a3937b1eed4930e9c3ec95b654d6
+ghcr.io/lmnaslimited/lenscloud-bench-command-runner@sha256:b209598b8252e6eb0f5d65a4783e597cb565ef575e24632374f18b34473f398a
 ```
 
 The published digest above is the last live-verified runner. The `site_setup`

@@ -50,6 +50,12 @@ documents.
 The manager is the administrative host. Application and database workloads
 must run on the worker.
 
+Repo delivery rule: do not copy reusable Infra repository content from the
+operator laptop to the manager with `scp`. The manager and worker must use a
+Git checkout and `git fetch` / `git checkout` / `git pull --ff-only` so the
+handoff record can name the exact revision. Use `scp` only for explicitly
+secret, non-Git artifacts such as a restricted kubeconfig handoff.
+
 ## Roles
 
 Before work starts, assign:
@@ -332,15 +338,39 @@ Verify firewall intent:
 
 ## Stage 6: Bootstrap K3s
 
-Manager:
+Set the Infra repository source and revision. Use a branch for normal rebuilds
+or a commit SHA for evidence-grade reproduction.
 
 ```bash
-scp -i ~/.ssh/lenscloud-test-infra \
-  scripts/20-bootstrap-k3s-manager.sh \
-  "root@$MANAGER_PUBLIC_IP:/root/"
+export INFRA_REPO_URL=https://github.com/lmnaslimited/lenscloud-infra.git
+export INFRA_REF=main
+```
+
+Prepare the manager checkout:
+
+```bash
+ssh -i ~/.ssh/lenscloud-test-infra "root@$MANAGER_PUBLIC_IP" \
+  "apt-get update && apt-get install -y git ca-certificates"
 
 ssh -i ~/.ssh/lenscloud-test-infra "root@$MANAGER_PUBLIC_IP" \
-  "bash /root/20-bootstrap-k3s-manager.sh \
+  "if [ -d /root/lenscloud-infra ] && [ ! -d /root/lenscloud-infra/.git ]; then \
+     mv /root/lenscloud-infra /root/lenscloud-infra.copy.\$(date -u +%Y%m%d%H%M%S); \
+   fi; \
+   if [ ! -d /root/lenscloud-infra/.git ]; then \
+     git clone '$INFRA_REPO_URL' /root/lenscloud-infra; \
+   fi; \
+   cd /root/lenscloud-infra && \
+   git fetch --all --tags --prune && \
+   git checkout '$INFRA_REF' && \
+   git pull --ff-only || true && \
+   git rev-parse --short HEAD"
+```
+
+Bootstrap the manager from the checked-out repository:
+
+```bash
+ssh -i ~/.ssh/lenscloud-test-infra "root@$MANAGER_PUBLIC_IP" \
+  "bash /root/lenscloud-infra/scripts/20-bootstrap-k3s-manager.sh \
     '$MANAGER_PUBLIC_IP' '$MANAGER_PRIVATE_IP'"
 ```
 
@@ -352,26 +382,27 @@ K3S_NODE_TOKEN="$(
     'cat /var/lib/rancher/k3s/server/node-token'
 )"
 
-scp -i ~/.ssh/lenscloud-test-infra \
-  scripts/21-bootstrap-k3s-worker.sh \
-  "root@$WORKER_PUBLIC_IP:/root/"
+ssh -i ~/.ssh/lenscloud-test-infra "root@$WORKER_PUBLIC_IP" \
+  "apt-get update && apt-get install -y git ca-certificates"
 
 ssh -i ~/.ssh/lenscloud-test-infra "root@$WORKER_PUBLIC_IP" \
-  "bash /root/21-bootstrap-k3s-worker.sh \
+  "if [ -d /root/lenscloud-infra ] && [ ! -d /root/lenscloud-infra/.git ]; then \
+     mv /root/lenscloud-infra /root/lenscloud-infra.copy.\$(date -u +%Y%m%d%H%M%S); \
+   fi; \
+   if [ ! -d /root/lenscloud-infra/.git ]; then \
+     git clone '$INFRA_REPO_URL' /root/lenscloud-infra; \
+   fi; \
+   cd /root/lenscloud-infra && \
+   git fetch --all --tags --prune && \
+   git checkout '$INFRA_REF' && \
+   git pull --ff-only || true && \
+   git rev-parse --short HEAD"
+
+ssh -i ~/.ssh/lenscloud-test-infra "root@$WORKER_PUBLIC_IP" \
+  "bash /root/lenscloud-infra/scripts/21-bootstrap-k3s-worker.sh \
     '$MANAGER_PRIVATE_IP' '$K3S_NODE_TOKEN' '$WORKER_PRIVATE_IP'"
 
 unset K3S_NODE_TOKEN
-```
-
-Copy the repository content to the manager:
-
-```bash
-ssh -i ~/.ssh/lenscloud-test-infra "root@$MANAGER_PUBLIC_IP" \
-  'mkdir -p /root/lenscloud-infra'
-
-scp -i ~/.ssh/lenscloud-test-infra -r \
-  scripts manifests docs certbot \
-  "root@$MANAGER_PUBLIC_IP:/root/lenscloud-infra/"
 ```
 
 From now on, Kubernetes commands run on the manager:
@@ -379,6 +410,10 @@ From now on, Kubernetes commands run on the manager:
 ```bash
 ssh -i ~/.ssh/lenscloud-test-infra "root@$MANAGER_PUBLIC_IP"
 cd /root/lenscloud-infra
+git fetch --all --tags --prune
+git checkout "$INFRA_REF"
+git pull --ff-only || true
+git rev-parse --short HEAD
 export KUBECONFIG=/root/.kube/config
 export MANAGER_NAME=lenscloud-eu-test-manager-1
 export WORKER_NAME=lenscloud-eu-test-worker-1

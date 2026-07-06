@@ -6,12 +6,12 @@
 
 ## Status
 
-Ready for live verification.
+In live verification.
 
-The runner source and local verification are complete. Live verification is
-blocked until the updated runner image is published, its digest is pinned in
-admission, and Infra runs `scripts/64-verify-cua-site-setup-runner.sh` against
-a real Platform-managed Bench/Site.
+The runner source and local verification are complete. The updated runner image
+has been published and admission has been updated in source. Live cluster
+verification must prove the pinned image against a real Platform-managed
+Bench/Site before Platform enables customer workflows.
 
 ## Files Changed
 
@@ -59,6 +59,20 @@ Result:
 Bench command runner local verification passed.
 ```
 
+## Published Runner Image
+
+Tag:
+
+```text
+ghcr.io/lmnaslimited/lenscloud-bench-command-runner:v0.1.6
+```
+
+Digest:
+
+```text
+ghcr.io/lmnaslimited/lenscloud-bench-command-runner@sha256:b209598b8252e6eb0f5d65a4783e597cb565ef575e24632374f18b34473f398a
+```
+
 Covered locally:
 
 - existing Site Control commands still pass;
@@ -72,17 +86,15 @@ Covered locally:
 ## Admission/RBAC Change
 
 `manifests/access/lenscloud-platform-rbac.yaml` now includes the
-`site_setup` Bench Command family in the admission allowlist.
-
-The production runner image digest is not updated in this pass because the new
-image has not been published yet.
+`site_setup` Bench Command family in the admission allowlist and pins the
+`v0.1.6` runner digest above.
 
 ## Live Verification Command
 
 After publishing the new runner image and pinning the digest in admission, run:
 
 ```bash
-RUNNER_IMAGE='ghcr.io/lmnaslimited/lenscloud-bench-command-runner@sha256:<new-digest>' \
+RUNNER_IMAGE='ghcr.io/lmnaslimited/lenscloud-bench-command-runner@sha256:b209598b8252e6eb0f5d65a4783e597cb565ef575e24632374f18b34473f398a' \
 REAL_BENCH='<platform-managed-bench>' \
 REAL_SITE='<platform-managed-site.cloud.lmnaslens.com>' \
 REAL_SITES_PVC='<platform-managed-bench-sites-pvc>' \
@@ -126,8 +138,6 @@ The runner returns sanitized errors only. It does not include:
 
 ## Remaining Gaps
 
-- Publish a new runner image from this source.
-- Pin the new runner digest in admission.
 - Apply the admission/RBAC manifest to the target cluster.
 - Run `scripts/64-verify-cua-site-setup-runner.sh` against a real
   Platform-managed Bench/Site.

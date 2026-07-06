@@ -111,6 +111,8 @@ spec:
           env:
             - name: BENCH_PATH
               value: /home/frappe/frappe-bench
+            - name: BENCH_SITES_PATH
+              value: /lenscloud/sites
             - name: BENCH_COMMAND_REQUEST
               value: /lenscloud/request/request.json
           volumeMounts:
@@ -118,7 +120,7 @@ spec:
               mountPath: /lenscloud/request
               readOnly: true
             - name: sites
-              mountPath: /home/frappe/frappe-bench/sites
+              mountPath: /lenscloud/sites
               readOnly: ${read_only}
 EOF
 }

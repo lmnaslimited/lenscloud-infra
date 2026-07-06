@@ -7,6 +7,12 @@ LensCloud Frappe backend. Kubernetes commands run on the EU manager. The
 kubeconfig is copied to the platform host outside Git and mounted read-only into
 the devcontainer.
 
+The manager must use a real `lenscloud-infra` Git checkout. Do not update
+manager scripts, manifests, or docs by copying repository folders from a laptop
+with `scp`; use `git fetch`, `git checkout`, and `git pull --ff-only` so the
+handoff evidence can name the exact revision. `scp` is reserved for secret
+artifacts such as the generated restricted kubeconfig.
+
 ## Variables
 
 ```bash
@@ -22,6 +28,10 @@ From the manager checkout:
 
 ```bash
 cd /root/lenscloud-infra
+git fetch --all --tags --prune
+git checkout main
+git pull --ff-only
+git rev-parse --short HEAD
 ./scripts/51-install-platform-access.sh
 ./scripts/53-generate-platform-kubeconfig.sh
 ./scripts/54-verify-platform-access.sh

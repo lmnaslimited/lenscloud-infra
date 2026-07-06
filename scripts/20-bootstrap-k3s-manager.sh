@@ -33,7 +33,7 @@ EOF
 sysctl --system
 
 apt-get update
-apt-get install -y curl ca-certificates jq gettext-base
+apt-get install -y curl ca-certificates jq gettext-base git
 
 if ! command -v k3s >/dev/null 2>&1; then
   curl -sfL https://get.k3s.io | INSTALL_K3S_EXEC="server --disable=traefik --node-ip ${PRIVATE_IP} --advertise-address ${PRIVATE_IP} --flannel-iface enp7s0 --tls-san ${PUBLIC_IP} --tls-san ${PRIVATE_IP}" sh -

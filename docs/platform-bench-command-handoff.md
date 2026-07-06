@@ -88,11 +88,11 @@ bench-command-runner/
 The current runner image is published and admission-pinned:
 
 ```text
-ghcr.io/lmnaslimited/lenscloud-bench-command-runner@sha256:eebfa0199c328207b14a949fa6232954a203a3937b1eed4930e9c3ec95b654d6
+ghcr.io/lmnaslimited/lenscloud-bench-command-runner@sha256:b209598b8252e6eb0f5d65a4783e597cb565ef575e24632374f18b34473f398a
 ```
 
 Live positive proof for the runner capability passed on 2026-06-28 after the
-GHCR package was made publicly pullable by the EU worker. The current `v0.1.4`
+GHCR package was made publicly pullable by the EU worker. The current `v0.1.6`
 image with the display and metadata-only `backup.status` contracts was
 live-verified on 2026-06-30.
 
@@ -203,7 +203,7 @@ spec:
       restartPolicy: Never
       containers:
         - name: bench-command
-          image: ghcr.io/lmnaslimited/lenscloud-bench-command-runner@sha256:eebfa0199c328207b14a949fa6232954a203a3937b1eed4930e9c3ec95b654d6
+          image: ghcr.io/lmnaslimited/lenscloud-bench-command-runner@sha256:b209598b8252e6eb0f5d65a4783e597cb565ef575e24632374f18b34473f398a
 ```
 
 The Job may read the request ConfigMap and non-secret ConfigMaps required for
@@ -631,7 +631,7 @@ Runner image: published to GHCR and pinned by digest.
 Admission: live-applied and denies non-runner maintenance_mode images.
 Local container smoke: passed.
 Live positive runner Job: passed for maintenance_mode.enable.
-Current v0.1.4 runner image: live-verified on 2026-06-30.
+Current v0.1.6 runner image: live-verified on 2026-06-30.
 Cleanup: temporary runner Job, ConfigMaps, and Pod removed.
 ```
 

@@ -93,6 +93,17 @@ Before final handoff, the agent must update:
 - dated evidence;
 - Platform handoff prompt/doc, if applicable.
 
+When Platform is the consumer, maintain the canonical two-copy handoff model:
+
+- source copy in this repo under `docs/handoffs/platform/`;
+- Platform-facing copy under
+  `lenscloud-platform/frappe-bench/apps/lenscloud/docs/handoffs/platform/`;
+- both copies must identify the same Infra workitem and link back to the Infra
+  evidence/contract path.
+
+If the Platform checkout is not available, the Infra source handoff must say so
+explicitly and include the exact path where Platform must copy it.
+
 The final response must include:
 
 - Infra revision;

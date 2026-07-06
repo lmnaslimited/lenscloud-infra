@@ -326,9 +326,10 @@ def prepared_frappe_sites_path(site: str) -> Iterator[Path]:
     site_root, _layout = site_root_path(site)
     with tempfile.TemporaryDirectory(prefix="lenscloud-sites-") as temp_name:
         temp_sites = Path(temp_name)
-        common_config = SITES_PATH / "common_site_config.json"
-        if common_config.exists():
-            os.symlink(common_config.resolve(), temp_sites / "common_site_config.json")
+        for metadata_name in ("common_site_config.json", "apps.txt", "apps.json"):
+            metadata_path = SITES_PATH / metadata_name
+            if metadata_path.exists():
+                os.symlink(metadata_path.resolve(), temp_sites / metadata_name)
         os.symlink(site_root.resolve(), temp_sites / site)
         yield temp_sites
 
@@ -429,6 +430,8 @@ def run_frappe_setup(site: str, operation: str, args: dict[str, Any], timeout: i
 
     if not BENCH_PYTHON.is_file():
         raise CommandError("RUNNER_FAILED", "bench Python environment was not found")
+
+    Path("/home/frappe/logs").mkdir(parents=True, exist_ok=True)
 
     with prepared_frappe_sites_path(site) as temp_sites:
         try:
