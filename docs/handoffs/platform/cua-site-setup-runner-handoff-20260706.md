@@ -6,11 +6,19 @@
 
 ## Status
 
-Source implemented and ready for image publication/live verification.
+Source implemented, runner image published, and source admission pin updated.
+Live cluster verification is still required before Platform enables
+customer-facing setup workflows.
 
 Platform must not enable customer-facing `site_setup` workflows until Infra
-publishes the new runner image, pins the digest in admission, runs live
-verification, and updates this handoff with final evidence.
+runs live verification against a real Platform-managed Bench/Site and updates
+this handoff with final evidence.
+
+Published runner:
+
+```text
+ghcr.io/lmnaslimited/lenscloud-bench-command-runner@sha256:b209598b8252e6eb0f5d65a4783e597cb565ef575e24632374f18b34473f398a
+```
 
 ## Implemented Runner Commands
 
