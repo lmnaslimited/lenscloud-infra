@@ -463,6 +463,12 @@ be mounted as a short-lived Kubernetes Secret at
 `/lenscloud/secrets/client_secret` and must never appear in ConfigMaps,
 termination messages, action logs, evidence, or browser responses.
 
+The target Site must have a valid Frappe Fernet-compatible `encryption_key`
+before `oauth.configure` runs. `INF-025` diagnosed a kept CUA Site where
+`oauth.configure` failed because `site_config.json` contained an invalid key
+shape. In that case Platform should not change the OAuth request shape; it
+should repair or recreate the target Site, then retry the same OAuth command.
+
 User/access work should use standard Frappe APIs or bench-executed standard
 Frappe methods first. Add a branding app only if standard APIs prove
 insufficient and the gap is documented.

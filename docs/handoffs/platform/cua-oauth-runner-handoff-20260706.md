@@ -60,6 +60,15 @@ The target Site must also have a valid Frappe Fernet-compatible
 encryption key is invalid, Frappe rejects the write with an encryption-key
 validation error.
 
+Follow-up `INF-025` confirmed this exact failure mode on the kept CUA Site
+`run-20260706-cua-134515.cloud.lmnaslens.com`. Platform should retry the same
+OAuth request shape only after the target Site is recreated or explicitly
+repaired with a valid encryption key. See:
+
+```text
+lenscloud-infra/docs/handoffs/platform/cua-oauth-configure-runner-failed-20260707.md
+```
+
 ## Request: `oauth.status`
 
 `oauth.status` does not require a Secret mount.
