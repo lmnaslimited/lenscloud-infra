@@ -117,14 +117,14 @@ Build example:
 
 ```bash
 docker build \
-  -t ghcr.io/lmnaslimited/lenscloud-bench-command-runner:v0.1.9 \
+  -t ghcr.io/lmnaslimited/lenscloud-bench-command-runner:v0.1.10 \
   bench-command-runner
 ```
 
 Published image:
 
 ```text
-ghcr.io/lmnaslimited/lenscloud-bench-command-runner@sha256:31973edd01e9c6ea75f2a3b4ef323d5ff643fcec97b2d49b6da9d9d10b7f7580
+ghcr.io/lmnaslimited/lenscloud-bench-command-runner@sha256:e003d3f49a1225ccc37df1147bc7f2d1ca704518b90575fc5ad4c4af4ffc7741
 ```
 
 The published digest above includes the OAuth runner source. It still requires

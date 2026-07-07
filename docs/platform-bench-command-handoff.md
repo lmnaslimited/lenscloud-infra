@@ -89,13 +89,13 @@ The current runner image is published and pinned in the repo admission
 manifest:
 
 ```text
-ghcr.io/lmnaslimited/lenscloud-bench-command-runner@sha256:31973edd01e9c6ea75f2a3b4ef323d5ff643fcec97b2d49b6da9d9d10b7f7580
+ghcr.io/lmnaslimited/lenscloud-bench-command-runner@sha256:e003d3f49a1225ccc37df1147bc7f2d1ca704518b90575fc5ad4c4af4ffc7741
 ```
 
 Live positive proof for the original runner capability passed on 2026-06-28
 after the GHCR package was made publicly pullable by the EU worker. The `v0.1.8`
 image with the display and metadata-only `backup.status` contracts was
-live-verified on 2026-06-30. The `v0.1.9` image above includes OAuth source and
+live-verified on 2026-06-30. The `v0.1.10` image above includes OAuth source and
 must still be applied and live-verified before Platform enables OAuth.
 
 The `site_setup.status` and `site_setup.complete` commands are implemented and
@@ -214,7 +214,7 @@ spec:
       restartPolicy: Never
       containers:
         - name: bench-command
-          image: ghcr.io/lmnaslimited/lenscloud-bench-command-runner@sha256:31973edd01e9c6ea75f2a3b4ef323d5ff643fcec97b2d49b6da9d9d10b7f7580
+          image: ghcr.io/lmnaslimited/lenscloud-bench-command-runner@sha256:e003d3f49a1225ccc37df1147bc7f2d1ca704518b90575fc5ad4c4af4ffc7741
 ```
 
 The Job may read the request ConfigMap and non-secret ConfigMaps required for
@@ -422,10 +422,9 @@ CUA Site bootstrap and SSO commands use the same Bench Command Job/API pattern.
 The `site_setup` runner commands are implemented, admission-pinned, and
 live-verified. `INF-022` adds target-Site Social Login Key management for the
 Platform-owned OAuth Client. Runner source, image publication, repo digest pin,
-and local verification are complete, but Platform must not enable OAuth
-commands until Infra applies the admission update and records live verification
-with `scripts/65-verify-cua-oauth-runner.sh`. User and site access commands
-remain unsupported until their own gates are implemented and verified.
+admission apply, and live verification are complete. Platform may adapt OAuth
+through the Bench Command path. User and site access commands remain
+unsupported until their own gates are implemented and verified.
 
 Canonical Infra gates:
 
@@ -445,7 +444,7 @@ Planned CUA command families:
 | Family | Commands | Current status | Gate |
 | --- | --- | --- | --- |
 | `site_setup` | `site_setup.status`, `site_setup.complete` | Supported / live-verified | Uses native Frappe setup APIs; see `INF-021` evidence |
-| `oauth` | `oauth.status`, `oauth.configure` | Source/local verified; image published and repo-pinned; pending admission apply and live verification | `INF-022`; Platform owns OAuth Client, Infra runner owns target Site Social Login Key |
+| `oauth` | `oauth.status`, `oauth.configure` | Supported / live-verified | `INF-022`; Platform owns OAuth Client, Infra runner owns target Site Social Login Key |
 | `user` | `user.ensure`, `user.disable`, `user.roles.set` | Unsupported / blocked | `INF-023`; wait for OAuth live verification, then use standard Frappe APIs first |
 | `site_access` | `site_access.status` | Unsupported / blocked | `INF-023`; wait for OAuth live verification, then use standard Frappe APIs first |
 
@@ -468,9 +467,8 @@ User/access work should use standard Frappe APIs or bench-executed standard
 Frappe methods first. Add a branding app only if standard APIs prove
 insufficient and the gap is documented.
 
-Platform may enable `site_setup` for customer workflows after consuming the
-dedicated `INF-021` handoff. OAuth must remain disabled in Platform until
-`INF-022` live verification evidence is published. User and site access
+Platform may enable `site_setup` and `oauth` for customer workflows after
+consuming the dedicated `INF-021` and `INF-022` handoffs. User and site access
 commands must continue to return `Unsupported` with `COMMAND_UNSUPPORTED`.
 
 ### Backup Status Display

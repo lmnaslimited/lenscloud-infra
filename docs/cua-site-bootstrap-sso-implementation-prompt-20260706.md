@@ -9,10 +9,8 @@ starts from `docs/infra-workitems.md`.
 Current CUA gate status:
 
 - `INF-021` setup runner: Complete.
-- `INF-022` OAuth runner: source/local verification complete; image published
-  and repo-pinned; admission apply and live verification remain.
-- `INF-023` user/access runner: Blocked until `INF-022` live verification is
-  complete.
+- `INF-022` OAuth runner: Complete.
+- `INF-023` user/access runner: Planned.
 
 ```text
 Work inside:
@@ -43,8 +41,8 @@ Documentation discipline:
 - Confirm INF-020 remains Complete and points to native Frappe setup API
   readiness evidence.
 - INF-021 is now Complete with live evidence.
-- INF-022 is Ready for Verification.
-- INF-023 is Blocked until INF-022 live verification is complete.
+- INF-022 is Complete.
+- INF-023 is Planned.
 - INF-024 remains Blocked until INF-022 and INF-023 are complete.
 - Do not create standalone trackers outside docs/infra-workitems.md.
 

@@ -21,7 +21,7 @@ ghcr.io/lmnaslimited/lenscloud-bench-command-runner@sha256:2905fb71dfb449258214a
 Current runner for new Platform work is published at:
 
 ```text
-ghcr.io/lmnaslimited/lenscloud-bench-command-runner@sha256:31973edd01e9c6ea75f2a3b4ef323d5ff643fcec97b2d49b6da9d9d10b7f7580
+ghcr.io/lmnaslimited/lenscloud-bench-command-runner@sha256:e003d3f49a1225ccc37df1147bc7f2d1ca704518b90575fc5ad4c4af4ffc7741
 ```
 
 ## Implemented Runner Commands
@@ -144,7 +144,7 @@ passwords, tokens, private keys, or raw setup documents in request args.
 
 Platform should:
 
-- keep OAuth disabled until `INF-022` live evidence is published;
+- use the dedicated `INF-022` OAuth handoff for OAuth integration;
 - keep user and site access commands marked `Unsupported`;
 - create request ConfigMaps and Jobs through the existing Python Kubernetes API
   Bench Command path;
@@ -197,7 +197,6 @@ Cleanup proof: no resources found with that prefix
 
 ## Remaining Infra Gaps
 
-- OAuth runner source/local verification is complete under `INF-022`, and the
-  runner image is published/repo-pinned, but Platform must keep OAuth commands
-  disabled until Infra applies admission and records live verification.
+- OAuth runner live verification is complete under `INF-022`; Platform may
+  adapt OAuth through the Bench Command path.
 - User and site access commands remain `Unsupported` until `INF-023`.

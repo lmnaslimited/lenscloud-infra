@@ -6,19 +6,19 @@
 
 ## Status
 
-Ready for live verification.
+Complete.
 
 Runner source, admission contract, local verification, and Platform handoff are
-updated. The runner image has been built and published, and the repo admission
-manifest has been pinned to the published digest. The admission update must
-still be applied to the cluster and live-verified with
-`scripts/65-verify-cua-oauth-runner.sh` before Platform enables OAuth commands.
+updated. The runner image has been built and published, the admission manifest
+has been pinned to the published digest, the admission update has been applied
+to the EU cluster, and `scripts/65-verify-cua-oauth-runner.sh` passed live on
+2026-07-07. Platform may adapt OAuth through the Bench Command path.
 
 Published image:
 
 ```text
-ghcr.io/lmnaslimited/lenscloud-bench-command-runner:v0.1.9
-ghcr.io/lmnaslimited/lenscloud-bench-command-runner@sha256:31973edd01e9c6ea75f2a3b4ef323d5ff643fcec97b2d49b6da9d9d10b7f7580
+ghcr.io/lmnaslimited/lenscloud-bench-command-runner:v0.1.10
+ghcr.io/lmnaslimited/lenscloud-bench-command-runner@sha256:e003d3f49a1225ccc37df1147bc7f2d1ca704518b90575fc5ad4c4af4ffc7741
 ```
 
 Build output confirmed the local image architecture as:
@@ -30,13 +30,13 @@ linux/amd64
 Remote digest verification:
 
 ```bash
-docker buildx imagetools inspect ghcr.io/lmnaslimited/lenscloud-bench-command-runner:v0.1.9
+docker buildx imagetools inspect ghcr.io/lmnaslimited/lenscloud-bench-command-runner:v0.1.10
 ```
 
 Summary:
 
 ```text
-Digest: sha256:31973edd01e9c6ea75f2a3b4ef323d5ff643fcec97b2d49b6da9d9d10b7f7580
+Digest: sha256:e003d3f49a1225ccc37df1147bc7f2d1ca704518b90575fc5ad4c4af4ffc7741
 ```
 
 ## Implemented Source
@@ -133,7 +133,7 @@ After applying the updated admission manifest, run from the Infra/admin path:
 ```bash
 kubectl apply -f manifests/access/lenscloud-platform-rbac.yaml
 
-RUNNER_IMAGE=ghcr.io/lmnaslimited/lenscloud-bench-command-runner@sha256:31973edd01e9c6ea75f2a3b4ef323d5ff643fcec97b2d49b6da9d9d10b7f7580 \
+RUNNER_IMAGE=ghcr.io/lmnaslimited/lenscloud-bench-command-runner@sha256:e003d3f49a1225ccc37df1147bc7f2d1ca704518b90575fc5ad4c4af4ffc7741 \
 REAL_BENCH=<platform-managed-bench> \
 REAL_SITE=<platform-managed-site> \
 REAL_SITES_PVC=<bench-sites-pvc> \
@@ -149,6 +149,74 @@ The verifier must prove:
 - non-OAuth Secret-volume Jobs are denied.
 - temporary Jobs, ConfigMaps, and the verifier Secret are cleaned.
 
+## Live Verification Result
+
+Applied admission on the manager from `/root/lenscloud-infra`:
+
+```bash
+kubectl apply -f manifests/access/lenscloud-platform-rbac.yaml
+```
+
+Live verifier:
+
+```bash
+RUNNER_IMAGE=ghcr.io/lmnaslimited/lenscloud-bench-command-runner@sha256:e003d3f49a1225ccc37df1147bc7f2d1ca704518b90575fc5ad4c4af4ffc7741 \
+REAL_BENCH=run-20260702-free-prod-bench \
+REAL_SITE=run-20260702-free-site.cloud.lmnaslens.com \
+REAL_SITES_PVC=run-20260702-free-prod-bench-sites \
+TEST_PREFIX=run-20260707-cua-oauth \
+PLATFORM_KUBECONFIG=.artifacts/lenscloud-eu.kubeconfig \
+RUNTIME_NAMESPACE=lenscloud-runtime-eu \
+./scripts/65-verify-cua-oauth-runner.sh
+```
+
+Result summary:
+
+```text
+CUA OAuth runner verification passed.
+Runtime namespace: lenscloud-runtime-eu
+Bench: run-20260702-free-prod-bench
+Site: run-20260702-free-site.cloud.lmnaslens.com
+Sites PVC: run-20260702-free-prod-bench-sites
+Positive commands: oauth.status, oauth.configure
+Negative checks: direct client_secret arg rejected; non-oauth Secret volume denied
+Temporary resource prefix: run-20260707-cua-oauth
+```
+
+Cleanup proof:
+
+```text
+No Jobs, ConfigMaps, Secrets, or Pods remained with prefixes:
+- run-20260707-cua-oauth
+- run-20260707-cua-oauth-debug
+- run-20260707-cua-oauth-rootcause
+```
+
+The verifier-created target Site `Social Login Key` provider
+`lenscloud_oauth_smoke` was removed after evidence capture.
+
+Preserved runtime resources:
+
+```text
+FrappeBench/run-20260702-free-prod-bench: Ready
+FrappeSite/run-20260702-free-site: Ready
+PVC/run-20260702-free-prod-bench-sites: Bound
+```
+
+RBAC recheck:
+
+```text
+Restricted LensCloud Platform RBAC verification passed for lenscloud-runtime-eu.
+```
+
+Root-cause note from the first failed attempt:
+
+`oauth.configure` writes a Frappe Password field. The target Site must have a
+valid Fernet-compatible `encryption_key` in `site_config.json`. The existing
+test Site had an invalid key shape; Infra repaired only that controlled test
+Site before rerunning the verifier. Platform-created Sites must ensure the
+encryption key is valid before OAuth configuration.
+
 ## Secret Redaction Proof
 
 Local verifier uses a fake OAuth secret and fails if the value appears in the
@@ -161,8 +229,9 @@ config, or full environment dumps.
 
 ## Remaining Gaps
 
-- Live cluster admission has not been applied in this pass.
-- `scripts/65-verify-cua-oauth-runner.sh` has not been run against the live
-  runtime Site in this pass.
-- `INF-023` user/access commands remain blocked until OAuth live verification
-  is complete.
+- Platform must create/manage the Platform-side OAuth Client.
+- Platform must provide target Site OAuth client secrets through short-lived
+  Kubernetes Secrets only.
+- Platform-created Sites must have valid Frappe encryption keys before
+  `oauth.configure`.
+- `INF-023` user/access commands remain unimplemented.

@@ -11,6 +11,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -374,24 +375,38 @@ def write_site_config(path: Path, data: dict[str, Any]) -> None:
 @contextmanager
 def prepared_frappe_sites_path(site: str) -> Iterator[Path]:
     site_root, _layout = site_root_path(site)
+    bench_site_alias = (BENCH_PATH / site).resolve()
+    created_alias = False
     with tempfile.TemporaryDirectory(prefix="lenscloud-sites-") as temp_name:
         temp_sites = Path(temp_name)
-        for metadata_name in ("common_site_config.json", "apps.txt", "apps.json"):
-            for metadata_path in (SITES_PATH / metadata_name, BENCH_PATH / "sites" / metadata_name):
-                if metadata_path.exists():
-                    os.symlink(metadata_path.resolve(), temp_sites / metadata_name)
-                    break
-        if not (temp_sites / "apps.txt").exists():
-            apps_root = BENCH_PATH / "apps"
-            app_names = sorted(
-                item.name
-                for item in apps_root.iterdir()
-                if item.is_dir() and not item.name.startswith(".")
-            ) if apps_root.is_dir() else []
-            if app_names:
-                (temp_sites / "apps.txt").write_text("\n".join(app_names) + "\n", encoding="utf-8")
-        os.symlink(site_root.resolve(), temp_sites / site)
-        yield temp_sites
+        try:
+            if not bench_site_alias.exists():
+                (bench_site_alias / "logs").mkdir(parents=True, exist_ok=True)
+                created_alias = True
+            elif bench_site_alias.is_dir():
+                (bench_site_alias / "logs").mkdir(parents=True, exist_ok=True)
+            else:
+                raise CommandError("TARGET_MISMATCH", "bench-local site log path is not a directory")
+
+            for metadata_name in ("common_site_config.json", "apps.txt", "apps.json"):
+                for metadata_path in (SITES_PATH / metadata_name, BENCH_PATH / "sites" / metadata_name):
+                    if metadata_path.exists():
+                        os.symlink(metadata_path.resolve(), temp_sites / metadata_name)
+                        break
+            if not (temp_sites / "apps.txt").exists():
+                apps_root = BENCH_PATH / "apps"
+                app_names = sorted(
+                    item.name
+                    for item in apps_root.iterdir()
+                    if item.is_dir() and not item.name.startswith(".")
+                ) if apps_root.is_dir() else []
+                if app_names:
+                    (temp_sites / "apps.txt").write_text("\n".join(app_names) + "\n", encoding="utf-8")
+            os.symlink(site_root.resolve(), temp_sites / site)
+            yield temp_sites
+        finally:
+            if created_alias and bench_site_alias.exists():
+                shutil.rmtree(bench_site_alias, ignore_errors=True)
 
 
 def fake_setup_state(site: str) -> tuple[Path, dict[str, Any]]:

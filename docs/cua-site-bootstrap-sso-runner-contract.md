@@ -6,8 +6,8 @@ This contract is traceable through `docs/infra-workitems.md`:
 
 - `INF-020` CUA native setup API readiness gate: Complete
 - `INF-021` CUA setup wizard runner gate: Complete
-- `INF-022` CUA OAuth runner gate: Ready for Verification
-- `INF-023` CUA user/access runner gate: Blocked
+- `INF-022` CUA OAuth runner gate: Complete
+- `INF-023` CUA user/access runner gate: Planned
 - `INF-024` CUA end-to-end runner handoff: Blocked
 
 Source handoff:
@@ -153,8 +153,8 @@ keys, tracebacks, pod logs, or full environment dumps.
 | --- | --- | --- | --- | --- |
 | `INF-020` | native setup API readiness | Frappe API contract review | Complete | Frappe v16 provides status and setup completion APIs |
 | `INF-021` | `site_setup` | `site_setup.status`, `site_setup.complete` | Complete | Live proof passed on a real Platform-managed Site |
-| `INF-022` | `oauth` | `oauth.status`, `oauth.configure` | Ready for Verification | Source/local proof complete; runner image published and repo-pinned; admission apply and live verification remain |
-| `INF-023` | `user`, `site_access` | `user.ensure`, `user.disable`, `user.roles.set`, `site_access.status` | Blocked | Wait until OAuth runner is live-verified, then choose standard Frappe API path or document a branded-method gap |
+| `INF-022` | `oauth` | `oauth.status`, `oauth.configure` | Complete | Live proof passed on 2026-07-07 with runner digest `sha256:e003d3f49a1225ccc37df1147bc7f2d1ca704518b90575fc5ad4c4af4ffc7741` |
+| `INF-023` | `user`, `site_access` | `user.ensure`, `user.disable`, `user.roles.set`, `site_access.status` | Planned | Choose standard Frappe API path or document a branded-method gap |
 | `INF-024` | CUA E2E | full setup, OAuth, user/access sequence | Blocked | `INF-020` through `INF-023` complete with evidence |
 
 Until a gate is complete, the runner must return `Unsupported` with
@@ -281,12 +281,12 @@ Infra has implemented `oauth.status` and `oauth.configure` in runner source,
 published the runner image, and pinned the repo admission manifest to:
 
 ```text
-ghcr.io/lmnaslimited/lenscloud-bench-command-runner@sha256:31973edd01e9c6ea75f2a3b4ef323d5ff643fcec97b2d49b6da9d9d10b7f7580
+ghcr.io/lmnaslimited/lenscloud-bench-command-runner@sha256:e003d3f49a1225ccc37df1147bc7f2d1ca704518b90575fc5ad4c4af4ffc7741
 ```
 
-Platform must not enable OAuth commands until Infra applies the admission
-update to the cluster and records live evidence from
-`scripts/65-verify-cua-oauth-runner.sh`.
+Infra applied the admission update to the cluster and recorded live evidence
+from `scripts/65-verify-cua-oauth-runner.sh` on 2026-07-07. Platform may adapt
+OAuth through the Bench Command path.
 
 ## Result Shape
 
@@ -362,7 +362,7 @@ ConfigMaps, or evidence.
 - no credential leakage;
 - cleanup of request ConfigMaps, Jobs, temporary Secret, and terminal Pods.
 
-`INF-023` must stay blocked until `INF-022` live verification is complete.
+`INF-023` can start as the next CUA runner gate.
 
 ## Remaining Future DNS/SSO Scope
 
