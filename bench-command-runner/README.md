@@ -117,18 +117,19 @@ Build example:
 
 ```bash
 docker build \
-  -t ghcr.io/lmnaslimited/lenscloud-bench-command-runner:v0.1.10 \
+  -t ghcr.io/lmnaslimited/lenscloud-bench-command-runner:v0.1.11 \
   bench-command-runner
 ```
 
 Published image:
 
 ```text
-ghcr.io/lmnaslimited/lenscloud-bench-command-runner@sha256:e003d3f49a1225ccc37df1147bc7f2d1ca704518b90575fc5ad4c4af4ffc7741
+ghcr.io/lmnaslimited/lenscloud-bench-command-runner:v0.1.11
+ghcr.io/lmnaslimited/lenscloud-bench-command-runner@sha256:3e7867ff7cb0285395aafd380232496f854c6d014c237b8790cbcbfd1bd577ef
 ```
 
-The published digest above includes the OAuth runner source. It still requires
-admission application and live verification with:
+The published digest above includes the local-dev OAuth HTTP gate for
+`INF-026`. It still requires admission application and live verification with:
 
 ```bash
 scripts/65-verify-cua-oauth-runner.sh
@@ -156,3 +157,21 @@ The request ConfigMap must set:
 The request ConfigMap must not include `client_secret`. The runner rejects
 direct `client_secret` args and returns only sanitized status fields such as
 `secret_configured: true`.
+
+## OAuth Local Dev Issuer
+
+`oauth.configure` is HTTPS-only by default for `base_url`.
+
+For local/dev CUA acceptance only, Platform may pass:
+
+```json
+{
+  "base_url": "http://dev.localhost:8000",
+  "allow_local_oauth_http": true
+}
+```
+
+The runner accepts plain HTTP only when `allow_local_oauth_http` is a JSON
+boolean `true` and `base_url` is loopback/local-dev: `localhost`,
+`*.localhost`, or a loopback IP. Local HTTP is rejected when the flag is
+missing or false, and non-local HTTP is always rejected.

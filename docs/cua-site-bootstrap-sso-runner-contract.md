@@ -203,17 +203,30 @@ CUA commands extend the existing Bench Command request stored in
 ## INF-022 OAuth / Social Login Boundary
 
 Platform owns the Platform-side `OAuth Client`. That record defines the
-authorization server app, allowed roles, redirect URI, and client secret. A
-representative Platform-owned shape is:
+authorization server app, allowed roles, redirect URI, and client secret.
+Platform also owns the provider identity through Platform Settings:
+
+```text
+oauth_provider_key
+oauth_provider_name
+oauth_base_url
+allow_local_oauth_http
+```
+
+Infra must not hard-code the provider key, provider name, or issuer URL. The
+runner validates and applies the values Platform passes in the Bench Command
+request.
+
+A representative Platform-owned shape is:
 
 ```json
 {
   "doctype": "OAuth Client",
   "client_id": "f9312840a0",
-  "app_name": "Nectar",
+  "app_name": "<oauth_provider_name>",
   "scopes": "all openid",
-  "redirect_uris": "https://crm.lmnaslens.com/api/method/frappe.integrations.oauth2_logins.custom/nectar",
-  "default_redirect_uri": "https://crm.lmnaslens.com/api/method/frappe.integrations.oauth2_logins.custom/nectar",
+  "redirect_uris": "https://<target-site>/api/method/frappe.integrations.oauth2_logins.custom/<oauth_provider_key>",
+  "default_redirect_uri": "https://<target-site>/api/method/frappe.integrations.oauth2_logins.custom/<oauth_provider_key>",
   "grant_type": "Authorization Code",
   "response_type": "Code",
   "allowed_roles": [{"role": "Desk User"}]
@@ -227,15 +240,15 @@ Platform OAuth provider. A representative target-Site shape is:
 ```json
 {
   "doctype": "Social Login Key",
-  "name": "nectar",
+  "name": "<oauth_provider_key>",
   "enable_social_login": 1,
   "social_login_provider": "Custom",
-  "provider_name": "Nectar",
-  "client_id": "lavpf2erok",
-  "base_url": "https://nectar.lmnas.com",
+  "provider_name": "<oauth_provider_name>",
+  "client_id": "<platform-oauth-client-id>",
+  "base_url": "<oauth_base_url>",
   "authorize_url": "/api/method/frappe.integrations.oauth2.authorize",
   "access_token_url": "/api/method/frappe.integrations.oauth2.get_token",
-  "redirect_url": "https://qsgbcz.lmnas.com/api/method/frappe.integrations.oauth2_logins.custom/nectar",
+  "redirect_url": "https://<target-site>/api/method/frappe.integrations.oauth2_logins.custom/<oauth_provider_key>",
   "api_endpoint": "/api/method/frappe.integrations.oauth2.openid_profile",
   "custom_base_url": 1,
   "auth_url_data": "{\"response_type\":\"code\",\"scope\":\"openid\"}",
@@ -258,14 +271,14 @@ must set:
 ```json
 {
   "args": {
-    "provider": "nectar",
-    "provider_name": "Nectar",
-    "client_id": "lavpf2erok",
+    "provider": "<oauth_provider_key>",
+    "provider_name": "<oauth_provider_name>",
+    "client_id": "<platform-oauth-client-id>",
     "client_secret_source": "mounted_file",
-    "base_url": "https://nectar.lmnas.com",
+    "base_url": "<oauth_base_url>",
     "authorize_url": "/api/method/frappe.integrations.oauth2.authorize",
     "access_token_url": "/api/method/frappe.integrations.oauth2.get_token",
-    "redirect_url": "https://qsgbcz.lmnas.com/api/method/frappe.integrations.oauth2_logins.custom/nectar",
+    "redirect_url": "https://<target-site>/api/method/frappe.integrations.oauth2_logins.custom/<oauth_provider_key>",
     "api_endpoint": "/api/method/frappe.integrations.oauth2.openid_profile",
     "auth_url_data": {"response_type": "code", "scope": "openid"},
     "sign_ups": "",
@@ -273,6 +286,26 @@ must set:
   }
 }
 ```
+
+For local/dev CUA acceptance, Platform may use the LensCloud Platform Settings
+issuer directly:
+
+```json
+{
+  "args": {
+    "provider": "<oauth_provider_key>",
+    "provider_name": "<oauth_provider_name>",
+    "base_url": "<oauth_base_url>",
+    "allow_local_oauth_http": true
+  }
+}
+```
+
+`allow_local_oauth_http` must be a JSON boolean. The runner accepts plain HTTP
+only when that flag is `true` and `base_url` is loopback/local-dev:
+`localhost`, `*.localhost`, or a loopback IP. If the flag is absent or false,
+local HTTP is rejected. Non-local HTTP is rejected even when the flag is true.
+Production/non-local issuers remain HTTPS-only.
 
 `oauth.status` must not require the secret mount. `oauth.configure` requires
 the secret mount and must write only sanitized result fields.
@@ -287,6 +320,16 @@ ghcr.io/lmnaslimited/lenscloud-bench-command-runner@sha256:e003d3f49a1225ccc37df
 Infra applied the admission update to the cluster and recorded live evidence
 from `scripts/65-verify-cua-oauth-runner.sh` on 2026-07-07. Platform may adapt
 OAuth through the Bench Command path.
+
+`INF-026` publishes the local/dev OAuth HTTP issuer gate as:
+
+```text
+ghcr.io/lmnaslimited/lenscloud-bench-command-runner:v0.1.11
+ghcr.io/lmnaslimited/lenscloud-bench-command-runner@sha256:3e7867ff7cb0285395aafd380232496f854c6d014c237b8790cbcbfd1bd577ef
+```
+
+The repo admission manifest is pinned to this digest. Live cluster verification
+for `INF-026` remains pending.
 
 ## Result Shape
 
@@ -359,6 +402,17 @@ ConfigMaps, or evidence.
 - `oauth.status` after configuration;
 - direct `client_secret` request arg rejection;
 - non-OAuth Secret-volume Job admission denial;
+- no credential leakage;
+- cleanup of request ConfigMaps, Jobs, temporary Secret, and terminal Pods.
+
+`INF-026` must prove the local/dev OAuth issuer exception:
+
+- `oauth.configure` accepts `base_url=http://dev.localhost:8000` only with
+  `allow_local_oauth_http: true`;
+- the same base URL is rejected when the flag is absent or false;
+- non-local plain HTTP is rejected even when the flag is true;
+- target `Social Login Key` state reflects Platform-provided request values,
+  not an example or hard-coded issuer;
 - no credential leakage;
 - cleanup of request ConfigMaps, Jobs, temporary Secret, and terminal Pods.
 

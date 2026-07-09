@@ -15,10 +15,12 @@ import shutil
 import subprocess
 import sys
 import tempfile
+from ipaddress import ip_address
 from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterator
+from urllib.parse import urlparse
 
 
 COMMANDS = {
@@ -172,6 +174,46 @@ def require_https_url(value: str, key: str) -> str:
     if not URL_RE.match(value):
         raise CommandError("INVALID_ARGUMENTS", f"oauth.configure {key} must be an https URL")
     return value
+
+
+def optional_bool(args: dict[str, Any], key: str, *, default: bool = False) -> bool:
+    value = args.get(key, default)
+    if not isinstance(value, bool):
+        raise CommandError("INVALID_ARGUMENTS", f"oauth.configure {key} must be a boolean")
+    return value
+
+
+def is_local_dev_http_url(value: str) -> bool:
+    parsed = urlparse(value)
+    if parsed.scheme != "http" or not parsed.netloc or not parsed.hostname:
+        return False
+    if parsed.username or parsed.password:
+        return False
+    hostname = parsed.hostname.lower().rstrip(".")
+    if hostname == "localhost" or hostname.endswith(".localhost"):
+        return True
+    try:
+        return ip_address(hostname).is_loopback
+    except ValueError:
+        return False
+
+
+def require_oauth_base_url(value: str, *, allow_local_oauth_http: bool) -> str:
+    if URL_RE.match(value):
+        return value
+    if allow_local_oauth_http and is_local_dev_http_url(value):
+        return value
+    if value.startswith("http://"):
+        if allow_local_oauth_http:
+            raise CommandError(
+                "INVALID_ARGUMENTS",
+                "oauth.configure base_url plain HTTP is allowed only for localhost/local-dev URLs",
+            )
+        raise CommandError(
+            "INVALID_ARGUMENTS",
+            "oauth.configure base_url must be an https URL unless allow_local_oauth_http is true",
+        )
+    raise CommandError("INVALID_ARGUMENTS", "oauth.configure base_url must be an https URL")
 
 
 def result(
@@ -479,6 +521,7 @@ def validate_oauth_config_args(args: dict[str, Any]) -> dict[str, Any]:
         "api_endpoint_args",
         "user_id_property",
         "icon",
+        "allow_local_oauth_http",
     }
     unknown_keys = set(args) - allowed_keys
     if unknown_keys:
@@ -512,6 +555,7 @@ def validate_oauth_config_args(args: dict[str, Any]) -> dict[str, Any]:
     sign_ups = optional_string(args, "sign_ups", max_length=10)
     if sign_ups not in {"", "Allow", "Deny"}:
         raise CommandError("INVALID_ARGUMENTS", "sign_ups must be empty, Allow, or Deny")
+    allow_local_oauth_http = optional_bool(args, "allow_local_oauth_http", default=False)
 
     config = {
         "provider": provider,
@@ -519,7 +563,10 @@ def validate_oauth_config_args(args: dict[str, Any]) -> dict[str, Any]:
         "social_login_provider": optional_string(args, "social_login_provider", max_length=40) or "Custom",
         "enable_social_login": 1 if bool(args.get("enable_social_login", True)) else 0,
         "client_id": require_string(args, "client_id", max_length=255),
-        "base_url": require_https_url(require_string(args, "base_url", max_length=500), "base_url"),
+        "base_url": require_oauth_base_url(
+            require_string(args, "base_url", max_length=500),
+            allow_local_oauth_http=allow_local_oauth_http,
+        ),
         "authorize_url": require_endpoint(require_string(args, "authorize_url", max_length=500), "authorize_url"),
         "access_token_url": require_endpoint(require_string(args, "access_token_url", max_length=500), "access_token_url"),
         "redirect_url": require_https_url(require_string(args, "redirect_url", max_length=500), "redirect_url"),

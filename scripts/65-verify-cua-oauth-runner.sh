@@ -9,10 +9,12 @@ set -euo pipefail
 : "${REAL_SITE:?Set REAL_SITE to a Platform-managed Site hostname}"
 : "${REAL_SITES_PVC:?Set REAL_SITES_PVC to the target Bench sites PVC}"
 : "${TEST_PREFIX:=run-$(date -u +%Y%m%d-%H%M)-cua-oauth}"
-: "${OAUTH_PROVIDER:=lenscloud_oauth_smoke}"
-: "${OAUTH_PROVIDER_NAME:=LensCloud OAuth Smoke}"
-: "${OAUTH_CLIENT_ID:=lenscloud-oauth-smoke-client}"
-: "${OAUTH_BASE_URL:=https://nectar.lmnas.com}"
+: "${OAUTH_PROVIDER:?Set OAUTH_PROVIDER to Platform Settings oauth_provider_key}"
+: "${OAUTH_PROVIDER_NAME:?Set OAUTH_PROVIDER_NAME to Platform Settings oauth_provider_name}"
+: "${OAUTH_CLIENT_ID:=lenscloud-local-dev-client}"
+: "${OAUTH_BASE_URL:?Set OAUTH_BASE_URL to Platform Settings oauth_base_url}"
+: "${OAUTH_ALLOW_LOCAL_HTTP:?Set OAUTH_ALLOW_LOCAL_HTTP to Platform Settings allow_local_oauth_http}"
+: "${OAUTH_NONLOCAL_HTTP_BASE_URL:=http://platform.example.com:8000}"
 : "${OAUTH_REDIRECT_URL:=https://${REAL_SITE}/api/method/frappe.integrations.oauth2_logins.custom/${OAUTH_PROVIDER}}"
 
 manager=(kubectl --kubeconfig "$MANAGER_KUBECONFIG")
@@ -24,12 +26,18 @@ cleanup() {
     "${TEST_PREFIX}-configure" \
     "${TEST_PREFIX}-status-after" \
     "${TEST_PREFIX}-secret-arg-reject" \
+    "${TEST_PREFIX}-local-http-missing-flag" \
+    "${TEST_PREFIX}-local-http-false-flag" \
+    "${TEST_PREFIX}-nonlocal-http-reject" \
     --ignore-not-found --wait=false >/dev/null 2>&1 || true
   "${manager[@]}" -n "$RUNTIME_NAMESPACE" delete configmap \
     "${TEST_PREFIX}-status-before-request" \
     "${TEST_PREFIX}-configure-request" \
     "${TEST_PREFIX}-status-after-request" \
     "${TEST_PREFIX}-secret-arg-reject-request" \
+    "${TEST_PREFIX}-local-http-missing-flag-request" \
+    "${TEST_PREFIX}-local-http-false-flag-request" \
+    "${TEST_PREFIX}-nonlocal-http-reject-request" \
     --ignore-not-found --wait=false >/dev/null 2>&1 || true
   "${manager[@]}" -n "$RUNTIME_NAMESPACE" delete secret \
     "${TEST_PREFIX}-oauth-client-secret" \
@@ -43,10 +51,16 @@ wait_for_cleanup() {
     "job/${TEST_PREFIX}-configure" \
     "job/${TEST_PREFIX}-status-after" \
     "job/${TEST_PREFIX}-secret-arg-reject" \
+    "job/${TEST_PREFIX}-local-http-missing-flag" \
+    "job/${TEST_PREFIX}-local-http-false-flag" \
+    "job/${TEST_PREFIX}-nonlocal-http-reject" \
     "configmap/${TEST_PREFIX}-status-before-request" \
     "configmap/${TEST_PREFIX}-configure-request" \
     "configmap/${TEST_PREFIX}-status-after-request" \
     "configmap/${TEST_PREFIX}-secret-arg-reject-request" \
+    "configmap/${TEST_PREFIX}-local-http-missing-flag-request" \
+    "configmap/${TEST_PREFIX}-local-http-false-flag-request" \
+    "configmap/${TEST_PREFIX}-nonlocal-http-reject-request" \
     "secret/${TEST_PREFIX}-oauth-client-secret"; do
     for _ in $(seq 1 60); do
       if ! "${manager[@]}" -n "$RUNTIME_NAMESPACE" get "$resource" >/dev/null 2>&1; then
@@ -251,7 +265,7 @@ if [[ "$status_before" != *'"phase":"Succeeded"'* || "$status_before" != *'"comm
   exit 1
 fi
 
-configure_args="{\"provider\":\"${OAUTH_PROVIDER}\",\"provider_name\":\"${OAUTH_PROVIDER_NAME}\",\"social_login_provider\":\"Custom\",\"enable_social_login\":true,\"client_id\":\"${OAUTH_CLIENT_ID}\",\"client_secret_source\":\"mounted_file\",\"base_url\":\"${OAUTH_BASE_URL}\",\"authorize_url\":\"/api/method/frappe.integrations.oauth2.authorize\",\"access_token_url\":\"/api/method/frappe.integrations.oauth2.get_token\",\"redirect_url\":\"${OAUTH_REDIRECT_URL}\",\"api_endpoint\":\"/api/method/frappe.integrations.oauth2.openid_profile\",\"custom_base_url\":true,\"auth_url_data\":{\"response_type\":\"code\",\"scope\":\"openid\"},\"sign_ups\":\"\"}"
+configure_args="{\"provider\":\"${OAUTH_PROVIDER}\",\"provider_name\":\"${OAUTH_PROVIDER_NAME}\",\"social_login_provider\":\"Custom\",\"enable_social_login\":true,\"client_id\":\"${OAUTH_CLIENT_ID}\",\"client_secret_source\":\"mounted_file\",\"base_url\":\"${OAUTH_BASE_URL}\",\"allow_local_oauth_http\":${OAUTH_ALLOW_LOCAL_HTTP},\"authorize_url\":\"/api/method/frappe.integrations.oauth2.authorize\",\"access_token_url\":\"/api/method/frappe.integrations.oauth2.get_token\",\"redirect_url\":\"${OAUTH_REDIRECT_URL}\",\"api_endpoint\":\"/api/method/frappe.integrations.oauth2.openid_profile\",\"custom_base_url\":true,\"auth_url_data\":{\"response_type\":\"code\",\"scope\":\"openid\"},\"sign_ups\":\"\"}"
 
 configure_message="$(run_and_wait configure oauth.configure "$configure_args" true)"
 if [[ "$configure_message" != *'"phase":"Succeeded"'* || "$configure_message" != *'"command":"oauth.configure"'* ]]; then
@@ -266,6 +280,10 @@ if [[ "$configure_message" == *"placeholder-verifier-secret-do-not-use"* || "$co
   echo "OAuth secret leaked in configure termination message." >&2
   exit 1
 fi
+if [[ "$configure_message" != *"\"base_url\":\"${OAUTH_BASE_URL}\""* || "$configure_message" != *"\"provider\":\"${OAUTH_PROVIDER}\""* ]]; then
+  echo "oauth.configure did not report the requested provider and base_url." >&2
+  exit 1
+fi
 
 status_after="$(run_and_wait status-after oauth.status "$status_args" false)"
 if [[ "$status_after" != *'"phase":"Succeeded"'* || "$status_after" != *'"summary":"Social login is enabled"'* ]]; then
@@ -273,13 +291,35 @@ if [[ "$status_after" != *'"phase":"Succeeded"'* || "$status_after" != *'"summar
   exit 1
 fi
 
-sensitive_message="$(run_and_wait secret-arg-reject oauth.configure '{"provider":"lenscloud_oauth_smoke","provider_name":"LensCloud OAuth Smoke","client_secret":"placeholder-verifier-secret-do-not-use"}' false)"
+sensitive_args="{\"provider\":\"${OAUTH_PROVIDER}\",\"provider_name\":\"${OAUTH_PROVIDER_NAME}\",\"client_secret\":\"placeholder-verifier-secret-do-not-use\"}"
+sensitive_message="$(run_and_wait secret-arg-reject oauth.configure "$sensitive_args" false)"
 if [[ "$sensitive_message" != *'"phase":"Failed"'* || "$sensitive_message" != *'"code":"INVALID_ARGUMENTS"'* ]]; then
   echo "oauth.configure with client_secret arg did not fail safely." >&2
   exit 1
 fi
 if [[ "$sensitive_message" == *"placeholder-verifier-secret-do-not-use"* ]]; then
   echo "Sensitive test value leaked in rejection message." >&2
+  exit 1
+fi
+
+missing_flag_args="{\"provider\":\"${OAUTH_PROVIDER}\",\"provider_name\":\"${OAUTH_PROVIDER_NAME}\",\"social_login_provider\":\"Custom\",\"enable_social_login\":true,\"client_id\":\"${OAUTH_CLIENT_ID}\",\"client_secret_source\":\"mounted_file\",\"base_url\":\"${OAUTH_BASE_URL}\",\"authorize_url\":\"/api/method/frappe.integrations.oauth2.authorize\",\"access_token_url\":\"/api/method/frappe.integrations.oauth2.get_token\",\"redirect_url\":\"${OAUTH_REDIRECT_URL}\",\"api_endpoint\":\"/api/method/frappe.integrations.oauth2.openid_profile\",\"custom_base_url\":true,\"auth_url_data\":{\"response_type\":\"code\",\"scope\":\"openid\"},\"sign_ups\":\"\"}"
+missing_flag_message="$(run_and_wait local-http-missing-flag oauth.configure "$missing_flag_args" true)"
+if [[ "$missing_flag_message" != *'"phase":"Failed"'* || "$missing_flag_message" != *'"code":"INVALID_ARGUMENTS"'* ]]; then
+  echo "oauth.configure accepted local HTTP without allow_local_oauth_http." >&2
+  exit 1
+fi
+
+false_flag_args="{\"provider\":\"${OAUTH_PROVIDER}\",\"provider_name\":\"${OAUTH_PROVIDER_NAME}\",\"social_login_provider\":\"Custom\",\"enable_social_login\":true,\"client_id\":\"${OAUTH_CLIENT_ID}\",\"client_secret_source\":\"mounted_file\",\"base_url\":\"${OAUTH_BASE_URL}\",\"allow_local_oauth_http\":false,\"authorize_url\":\"/api/method/frappe.integrations.oauth2.authorize\",\"access_token_url\":\"/api/method/frappe.integrations.oauth2.get_token\",\"redirect_url\":\"${OAUTH_REDIRECT_URL}\",\"api_endpoint\":\"/api/method/frappe.integrations.oauth2.openid_profile\",\"custom_base_url\":true,\"auth_url_data\":{\"response_type\":\"code\",\"scope\":\"openid\"},\"sign_ups\":\"\"}"
+false_flag_message="$(run_and_wait local-http-false-flag oauth.configure "$false_flag_args" true)"
+if [[ "$false_flag_message" != *'"phase":"Failed"'* || "$false_flag_message" != *'"code":"INVALID_ARGUMENTS"'* ]]; then
+  echo "oauth.configure accepted local HTTP with allow_local_oauth_http=false." >&2
+  exit 1
+fi
+
+nonlocal_http_args="{\"provider\":\"${OAUTH_PROVIDER}\",\"provider_name\":\"${OAUTH_PROVIDER_NAME}\",\"social_login_provider\":\"Custom\",\"enable_social_login\":true,\"client_id\":\"${OAUTH_CLIENT_ID}\",\"client_secret_source\":\"mounted_file\",\"base_url\":\"${OAUTH_NONLOCAL_HTTP_BASE_URL}\",\"allow_local_oauth_http\":true,\"authorize_url\":\"/api/method/frappe.integrations.oauth2.authorize\",\"access_token_url\":\"/api/method/frappe.integrations.oauth2.get_token\",\"redirect_url\":\"${OAUTH_REDIRECT_URL}\",\"api_endpoint\":\"/api/method/frappe.integrations.oauth2.openid_profile\",\"custom_base_url\":true,\"auth_url_data\":{\"response_type\":\"code\",\"scope\":\"openid\"},\"sign_ups\":\"\"}"
+nonlocal_http_message="$(run_and_wait nonlocal-http-reject oauth.configure "$nonlocal_http_args" true)"
+if [[ "$nonlocal_http_message" != *'"phase":"Failed"'* || "$nonlocal_http_message" != *'"code":"INVALID_ARGUMENTS"'* ]]; then
+  echo "oauth.configure accepted non-localhost plain HTTP with allow_local_oauth_http." >&2
   exit 1
 fi
 
@@ -328,12 +368,18 @@ EOF
   "${TEST_PREFIX}-configure" \
   "${TEST_PREFIX}-status-after" \
   "${TEST_PREFIX}-secret-arg-reject" \
+  "${TEST_PREFIX}-local-http-missing-flag" \
+  "${TEST_PREFIX}-local-http-false-flag" \
+  "${TEST_PREFIX}-nonlocal-http-reject" \
   --wait=false
 "${platform[@]}" -n "$RUNTIME_NAMESPACE" delete configmap \
   "${TEST_PREFIX}-status-before-request" \
   "${TEST_PREFIX}-configure-request" \
   "${TEST_PREFIX}-status-after-request" \
   "${TEST_PREFIX}-secret-arg-reject-request" \
+  "${TEST_PREFIX}-local-http-missing-flag-request" \
+  "${TEST_PREFIX}-local-http-false-flag-request" \
+  "${TEST_PREFIX}-nonlocal-http-reject-request" \
   --wait=false
 "${platform[@]}" -n "$RUNTIME_NAMESPACE" delete secret \
   "${TEST_PREFIX}-oauth-client-secret" \
@@ -344,6 +390,6 @@ echo "Runtime namespace: ${RUNTIME_NAMESPACE}"
 echo "Bench: ${REAL_BENCH}"
 echo "Site: ${REAL_SITE}"
 echo "Sites PVC: ${REAL_SITES_PVC}"
-echo "Positive commands: oauth.status, oauth.configure"
-echo "Negative checks: direct client_secret arg rejected; non-oauth Secret volume denied"
+echo "Positive commands: oauth.status, oauth.configure with base_url=${OAUTH_BASE_URL} and allow_local_oauth_http=${OAUTH_ALLOW_LOCAL_HTTP}"
+echo "Negative checks: local HTTP without allow_local_oauth_http rejected; local HTTP with allow_local_oauth_http=false rejected; non-local HTTP with allow_local_oauth_http rejected; direct client_secret arg rejected; non-oauth Secret volume denied"
 echo "Temporary resource prefix: ${TEST_PREFIX}"

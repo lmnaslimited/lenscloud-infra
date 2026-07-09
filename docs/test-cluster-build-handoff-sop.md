@@ -851,6 +851,61 @@ through RoleBindings.
 LensCloud Platform itself uses the Kubernetes API through its Python client. It
 does not require `kubectl`; these scripts are Infra-side contract verification.
 
+## Stage 13A: Verify CUA OAuth Local-Dev Issuer Contract
+
+Use this stage when handing a test cluster to Platform for CUA/OAuth local-dev
+acceptance. The provider identity and issuer source of truth is LensCloud
+Platform Settings, not an example host:
+
+```text
+oauth_provider_key=<platform-setting-value>
+oauth_provider_name=<platform-setting-value>
+oauth_base_url=http://dev.localhost:8000
+allow_local_oauth_http=true
+```
+
+The target redirect URL is derived from the target Site access URL:
+
+```text
+https://<target-site>/api/method/frappe.integrations.oauth2_logins.custom/<oauth_provider_key>
+```
+
+Publish and admission-pin a runner image that includes `INF-026`, then run the
+OAuth verifier against a real Platform-managed Bench/Site:
+
+```bash
+export RUNNER_IMAGE='ghcr.io/lmnaslimited/lenscloud-bench-command-runner@sha256:3e7867ff7cb0285395aafd380232496f854c6d014c237b8790cbcbfd1bd577ef'
+export REAL_BENCH=<platform-managed-bench>
+export REAL_SITE=<target-site-hostname>
+export REAL_SITES_PVC=<platform-managed-bench-sites-pvc>
+export OAUTH_PROVIDER=<oauth_provider_key>
+export OAUTH_PROVIDER_NAME=<oauth_provider_name>
+export OAUTH_CLIENT_ID=<platform-oauth-client-id>
+export OAUTH_BASE_URL=http://dev.localhost:8000
+export OAUTH_ALLOW_LOCAL_HTTP=true
+export OAUTH_REDIRECT_URL="https://${REAL_SITE}/api/method/frappe.integrations.oauth2_logins.custom/${OAUTH_PROVIDER}"
+
+./scripts/65-verify-cua-oauth-runner.sh
+```
+
+**Gate 13A tests**
+
+- `oauth.status` succeeds before and after configuration.
+- `oauth.configure` succeeds with
+  `base_url=http://dev.localhost:8000` and
+  `allow_local_oauth_http=true`.
+- `oauth.configure` rejects the same local HTTP base URL when
+  `allow_local_oauth_http` is absent or false.
+- `oauth.configure` rejects non-local plain HTTP even when
+  `allow_local_oauth_http=true`.
+- The target `Social Login Key` reports the Platform Settings provider key and
+  base URL, not any hard-coded/example issuer.
+- Direct `client_secret` request args are rejected.
+- Non-OAuth Bench Command Jobs cannot mount the OAuth client-secret Secret.
+- No OAuth client secret, kubeconfig, token, private key, pod log, raw
+  `site_config.json`, or full environment dump appears in evidence.
+- Temporary Jobs, ConfigMaps, Pods, and the short-lived Secret are deleted.
+
 ## Stage 14: Clean Smoke Resources
 
 Preserve the shared Public baseline:
@@ -914,6 +969,7 @@ Record:
 - approved Runtime Namespace labels and verification results;
 - positive/negative RBAC summary;
 - Bench/Site HTTPS and asset test results;
+- CUA OAuth local-dev issuer verification result when Stage 13A is in scope;
 - capacity snapshot and any warnings;
 - cleanup result and retained baseline.
 

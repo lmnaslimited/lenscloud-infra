@@ -143,22 +143,47 @@ run_command setup_sensitive_reject \
   1 | grep '"code":"INVALID_ARGUMENTS"' >/dev/null
 
 run_command oauth_status_missing \
-  "{\"apiVersion\":\"lenscloud.io/v1\",\"kind\":\"BenchCommand\",\"commandId\":\"local-14\",\"command\":\"oauth.status\",${base_target},\"args\":{\"provider\":\"nectar\"},\"timeoutSeconds\":60}" |
+  "{\"apiVersion\":\"lenscloud.io/v1\",\"kind\":\"BenchCommand\",\"commandId\":\"local-14\",\"command\":\"oauth.status\",${base_target},\"args\":{\"provider\":\"platform_oauth_https\"},\"timeoutSeconds\":60}" |
   grep -F '"summary":"Social login is not configured"' >/dev/null
 
-oauth_args='{"provider":"nectar","provider_name":"Nectar","social_login_provider":"Custom","enable_social_login":true,"client_id":"local-client-id","client_secret_source":"mounted_file","base_url":"https://nectar.lmnas.com","authorize_url":"/api/method/frappe.integrations.oauth2.authorize","access_token_url":"/api/method/frappe.integrations.oauth2.get_token","redirect_url":"https://runner-test.localhost/api/method/frappe.integrations.oauth2_logins.custom/nectar","api_endpoint":"/api/method/frappe.integrations.oauth2.openid_profile","custom_base_url":true,"auth_url_data":{"response_type":"code","scope":"openid"},"sign_ups":""}'
+oauth_args='{"provider":"platform_oauth_https","provider_name":"Platform OAuth Https","social_login_provider":"Custom","enable_social_login":true,"client_id":"local-client-id","client_secret_source":"mounted_file","base_url":"https://platform-oauth.example.com","authorize_url":"/api/method/frappe.integrations.oauth2.authorize","access_token_url":"/api/method/frappe.integrations.oauth2.get_token","redirect_url":"https://runner-test.localhost/api/method/frappe.integrations.oauth2_logins.custom/platform_oauth_https","api_endpoint":"/api/method/frappe.integrations.oauth2.openid_profile","custom_base_url":true,"auth_url_data":{"response_type":"code","scope":"openid"},"sign_ups":""}'
 
 run_command oauth_configure \
   "{\"apiVersion\":\"lenscloud.io/v1\",\"kind\":\"BenchCommand\",\"commandId\":\"local-15\",\"command\":\"oauth.configure\",${base_target},\"args\":${oauth_args},\"timeoutSeconds\":60}" |
   grep -F '"summary":"Social login configured"' >/dev/null
 
 run_command oauth_status_enabled \
-  "{\"apiVersion\":\"lenscloud.io/v1\",\"kind\":\"BenchCommand\",\"commandId\":\"local-16\",\"command\":\"oauth.status\",${base_target},\"args\":{\"provider_name\":\"Nectar\"},\"timeoutSeconds\":60}" |
+  "{\"apiVersion\":\"lenscloud.io/v1\",\"kind\":\"BenchCommand\",\"commandId\":\"local-16\",\"command\":\"oauth.status\",${base_target},\"args\":{\"provider_name\":\"Platform OAuth Https\"},\"timeoutSeconds\":60}" |
   grep -F '"value":"Enabled"' |
   grep -F '"secret_configured":true' >/dev/null
 
 run_command oauth_secret_arg_reject \
-  "{\"apiVersion\":\"lenscloud.io/v1\",\"kind\":\"BenchCommand\",\"commandId\":\"local-17\",\"command\":\"oauth.configure\",${base_target},\"args\":{\"provider\":\"nectar\",\"provider_name\":\"Nectar\",\"client_secret\":\"must-not-leak-oauth-secret\"},\"timeoutSeconds\":60}" \
+  "{\"apiVersion\":\"lenscloud.io/v1\",\"kind\":\"BenchCommand\",\"commandId\":\"local-17\",\"command\":\"oauth.configure\",${base_target},\"args\":{\"provider\":\"platform_oauth_https\",\"provider_name\":\"Platform OAuth Https\",\"client_secret\":\"must-not-leak-oauth-secret\"},\"timeoutSeconds\":60}" \
+  1 | grep '"code":"INVALID_ARGUMENTS"' >/dev/null
+
+oauth_local_args='{"provider":"platform_oauth","provider_name":"Platform OAuth","social_login_provider":"Custom","enable_social_login":true,"client_id":"local-dev-client-id","client_secret_source":"mounted_file","base_url":"http://dev.localhost:8000","allow_local_oauth_http":true,"authorize_url":"/api/method/frappe.integrations.oauth2.authorize","access_token_url":"/api/method/frappe.integrations.oauth2.get_token","redirect_url":"https://runner-test.localhost/api/method/frappe.integrations.oauth2_logins.custom/platform_oauth","api_endpoint":"/api/method/frappe.integrations.oauth2.openid_profile","custom_base_url":true,"auth_url_data":{"response_type":"code","scope":"openid"},"sign_ups":""}'
+
+run_command oauth_local_http_configure \
+  "{\"apiVersion\":\"lenscloud.io/v1\",\"kind\":\"BenchCommand\",\"commandId\":\"local-18\",\"command\":\"oauth.configure\",${base_target},\"args\":${oauth_local_args},\"timeoutSeconds\":60}" |
+  grep -F '"base_url":"http://dev.localhost:8000"' |
+  grep -F '"provider":"platform_oauth"' >/dev/null
+
+oauth_local_missing_flag='{"provider":"platform_oauth","provider_name":"Platform OAuth","social_login_provider":"Custom","enable_social_login":true,"client_id":"local-dev-client-id","client_secret_source":"mounted_file","base_url":"http://dev.localhost:8000","authorize_url":"/api/method/frappe.integrations.oauth2.authorize","access_token_url":"/api/method/frappe.integrations.oauth2.get_token","redirect_url":"https://runner-test.localhost/api/method/frappe.integrations.oauth2_logins.custom/platform_oauth","api_endpoint":"/api/method/frappe.integrations.oauth2.openid_profile","custom_base_url":true,"auth_url_data":{"response_type":"code","scope":"openid"},"sign_ups":""}'
+
+run_command oauth_local_http_missing_flag_reject \
+  "{\"apiVersion\":\"lenscloud.io/v1\",\"kind\":\"BenchCommand\",\"commandId\":\"local-19\",\"command\":\"oauth.configure\",${base_target},\"args\":${oauth_local_missing_flag},\"timeoutSeconds\":60}" \
+  1 | grep '"code":"INVALID_ARGUMENTS"' >/dev/null
+
+oauth_local_false_flag='{"provider":"platform_oauth","provider_name":"Platform OAuth","social_login_provider":"Custom","enable_social_login":true,"client_id":"local-dev-client-id","client_secret_source":"mounted_file","base_url":"http://dev.localhost:8000","allow_local_oauth_http":false,"authorize_url":"/api/method/frappe.integrations.oauth2.authorize","access_token_url":"/api/method/frappe.integrations.oauth2.get_token","redirect_url":"https://runner-test.localhost/api/method/frappe.integrations.oauth2_logins.custom/platform_oauth","api_endpoint":"/api/method/frappe.integrations.oauth2.openid_profile","custom_base_url":true,"auth_url_data":{"response_type":"code","scope":"openid"},"sign_ups":""}'
+
+run_command oauth_local_http_false_flag_reject \
+  "{\"apiVersion\":\"lenscloud.io/v1\",\"kind\":\"BenchCommand\",\"commandId\":\"local-20\",\"command\":\"oauth.configure\",${base_target},\"args\":${oauth_local_false_flag},\"timeoutSeconds\":60}" \
+  1 | grep '"code":"INVALID_ARGUMENTS"' >/dev/null
+
+oauth_nonlocal_http='{"provider":"platform_oauth","provider_name":"Platform OAuth","social_login_provider":"Custom","enable_social_login":true,"client_id":"local-dev-client-id","client_secret_source":"mounted_file","base_url":"http://platform.example.com:8000","allow_local_oauth_http":true,"authorize_url":"/api/method/frappe.integrations.oauth2.authorize","access_token_url":"/api/method/frappe.integrations.oauth2.get_token","redirect_url":"https://runner-test.localhost/api/method/frappe.integrations.oauth2_logins.custom/platform_oauth","api_endpoint":"/api/method/frappe.integrations.oauth2.openid_profile","custom_base_url":true,"auth_url_data":{"response_type":"code","scope":"openid"},"sign_ups":""}'
+
+run_command oauth_nonlocal_http_reject \
+  "{\"apiVersion\":\"lenscloud.io/v1\",\"kind\":\"BenchCommand\",\"commandId\":\"local-21\",\"command\":\"oauth.configure\",${base_target},\"args\":${oauth_nonlocal_http},\"timeoutSeconds\":60}" \
   1 | grep '"code":"INVALID_ARGUMENTS"' >/dev/null
 
 echo "Bench command runner local verification passed."

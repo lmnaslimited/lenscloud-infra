@@ -89,14 +89,15 @@ The current runner image is published and pinned in the repo admission
 manifest:
 
 ```text
-ghcr.io/lmnaslimited/lenscloud-bench-command-runner@sha256:e003d3f49a1225ccc37df1147bc7f2d1ca704518b90575fc5ad4c4af4ffc7741
+ghcr.io/lmnaslimited/lenscloud-bench-command-runner@sha256:3e7867ff7cb0285395aafd380232496f854c6d014c237b8790cbcbfd1bd577ef
 ```
 
 Live positive proof for the original runner capability passed on 2026-06-28
 after the GHCR package was made publicly pullable by the EU worker. The `v0.1.8`
 image with the display and metadata-only `backup.status` contracts was
-live-verified on 2026-06-30. The `v0.1.10` image above includes OAuth source and
-must still be applied and live-verified before Platform enables OAuth.
+live-verified on 2026-06-30. The `v0.1.10` image included OAuth source and was
+live-verified on 2026-07-07. The `v0.1.11` image above adds the `INF-026`
+local-dev OAuth HTTP issuer gate and is published for live verification.
 
 The `site_setup.status` and `site_setup.complete` commands are implemented and
 live-verified through `INF-021`. Platform may integrate them through the Bench
@@ -214,7 +215,7 @@ spec:
       restartPolicy: Never
       containers:
         - name: bench-command
-          image: ghcr.io/lmnaslimited/lenscloud-bench-command-runner@sha256:e003d3f49a1225ccc37df1147bc7f2d1ca704518b90575fc5ad4c4af4ffc7741
+          image: ghcr.io/lmnaslimited/lenscloud-bench-command-runner@sha256:3e7867ff7cb0285395aafd380232496f854c6d014c237b8790cbcbfd1bd577ef
 ```
 
 The Job may read the request ConfigMap and non-secret ConfigMaps required for
@@ -462,6 +463,16 @@ Login configuration through the request ConfigMap. The OAuth client secret must
 be mounted as a short-lived Kubernetes Secret at
 `/lenscloud/secrets/client_secret` and must never appear in ConfigMaps,
 termination messages, action logs, evidence, or browser responses.
+
+Local/dev CUA acceptance may use the LensCloud Platform Settings issuer
+directly. Platform Settings own `oauth_provider_key`, `oauth_provider_name`,
+`oauth_base_url`, and `allow_local_oauth_http`; Infra must not hard-code those
+values. `oauth.configure` remains HTTPS-only unless Platform passes
+`allow_local_oauth_http: true` and `base_url` is loopback/local-dev, such as
+`http://dev.localhost:8000`, `http://localhost:<port>`,
+`http://*.localhost:<port>`, or a loopback IP. Missing/false flags reject local
+HTTP, and non-local HTTP is always rejected. Production/non-local issuers remain
+HTTPS-only.
 
 The target Site must have a valid Frappe Fernet-compatible `encryption_key`
 before `oauth.configure` runs. `INF-025` diagnosed a kept CUA Site where
