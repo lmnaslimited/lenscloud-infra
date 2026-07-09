@@ -6,13 +6,12 @@
 
 ## Status
 
-Blocked on live admission pin application.
+Complete.
 
 Infra implemented and locally verified the runner contract requested by
-Platform commit range `cdb54d5..b4b8359`. Infra has verified the published
-GHCR digest and updated the repo admission pin. A live verification attempt
-with the current Platform Settings values was blocked because the cluster's
-live admission policy has not yet been updated to allow the `v0.1.11` digest.
+Platform commit range `cdb54d5..b4b8359`. Infra verified the published GHCR
+digest, applied the live admission pin on the manager VM, and passed live
+verification with the current Platform Settings values.
 
 Published runner image:
 
@@ -133,16 +132,7 @@ Local proof completed:
 - runner and verifier scripts pass syntax checks;
 - no secret-like values appeared in local termination summaries.
 
-Live proof status:
-
-- blocked until an admin/manager kubeconfig applies the updated admission pin
-  for
-  `ghcr.io/lmnaslimited/lenscloud-bench-command-runner@sha256:3e7867ff7cb0285395aafd380232496f854c6d014c237b8790cbcbfd1bd577ef`;
-- run `scripts/65-verify-cua-oauth-runner.sh` against the kept CUA Site or a
-  fresh Platform-managed target Site with Platform Settings values;
-- record positive/negative output and cleanup proof.
-
-The blocked live attempt used:
+Live proof passed on 2026-07-10:
 
 ```text
 oauth_provider_key=lenscloud
@@ -150,22 +140,24 @@ oauth_provider_name=LensCloud
 oauth_base_url=http://dev.localhost:8000
 allow_local_oauth_http=true
 Site: run-20260707-cua-oauth.cloud.lmnaslens.com
-Temporary resource prefix: run-20260709-cua-oauth-local-http
+Verifier Site: tara-communo-hub.cloud.lmnaslens.com
+Bench: run-20260702-free-prod-bench
+Sites PVC: run-20260702-free-prod-bench-sites
+OAuth client ID: 08riiahaab
+Temporary resource prefix: run-20260710-cua-oauth-local-http
 ```
 
-Admission denial summary:
-
 ```text
-ValidatingAdmissionPolicy 'lenscloud-platform-bench-command-job-create'
-denied request: approved runner image
+CUA OAuth runner verification passed.
+Positive commands: oauth.status, oauth.configure with base_url=http://dev.localhost:8000 and allow_local_oauth_http=true
+Negative checks: local HTTP without allow_local_oauth_http rejected; local HTTP with allow_local_oauth_http=false rejected; non-local HTTP with allow_local_oauth_http rejected; direct client_secret arg rejected; non-oauth Secret volume denied
 ```
 
 Cleanup proof: no Jobs, ConfigMaps, Pods, or exact short-lived Secret remain
-for `run-20260709-cua-oauth-local-http`.
+for `run-20260710-cua-oauth-local-http`.
 
 ## Platform Resume Point
 
-After the updated admission pin is applied and the live verifier passes,
 Platform should rerun:
 
 1. `oauth.status` for the Platform Settings `oauth_provider_key`.
@@ -180,5 +172,4 @@ Do not delete the fresh Site; keep it for `INF-023` user/access validation.
 
 ## Remaining Gaps
 
-- Admin/manager apply of `lenscloud-infra/manifests/access/lenscloud-platform-rbac.yaml`.
-- Live `INF-026` verifier run after admission accepts the `v0.1.11` digest.
+- `INF-023` user/access runner gate.

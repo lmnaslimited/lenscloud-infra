@@ -105,7 +105,7 @@ Digest: sha256:3e7867ff7cb0285395aafd380232496f854c6d014c237b8790cbcbfd1bd577ef
 
 The repo admission manifest has been updated to pin that digest.
 
-## Live Verification Attempt
+## Live Verification Attempt 1
 
 Attempted on 2026-07-09 with the current Platform Settings values:
 
@@ -183,4 +183,68 @@ kubectl -n lenscloud-runtime-eu get secret \
 
 ## Status
 
-Blocked on live admission pin application.
+Superseded by the successful 2026-07-10 run below.
+
+## Live Verification - 2026-07-10
+
+The manager VM admission pin was applied from `/root/lenscloud-infra`:
+
+```text
+validatingadmissionpolicy.admissionregistration.k8s.io/lenscloud-platform-bench-command-job-create configured
+```
+
+Live policy now allows:
+
+```text
+ghcr.io/lmnaslimited/lenscloud-bench-command-runner@sha256:3e7867ff7cb0285395aafd380232496f854c6d014c237b8790cbcbfd1bd577ef
+```
+
+Verifier input:
+
+```text
+Runtime namespace: lenscloud-runtime-eu
+Bench: run-20260702-free-prod-bench
+Site: tara-communo-hub.cloud.lmnaslens.com
+Sites PVC: run-20260702-free-prod-bench-sites
+OAuth provider: lenscloud
+OAuth provider name: LensCloud
+OAuth client ID: 08riiahaab
+OAuth base URL: http://dev.localhost:8000
+allow_local_oauth_http: true
+Temporary resource prefix: run-20260710-cua-oauth-local-http
+```
+
+Result:
+
+```text
+CUA OAuth runner verification passed.
+Runtime namespace: lenscloud-runtime-eu
+Bench: run-20260702-free-prod-bench
+Site: tara-communo-hub.cloud.lmnaslens.com
+Sites PVC: run-20260702-free-prod-bench-sites
+Positive commands: oauth.status, oauth.configure with base_url=http://dev.localhost:8000 and allow_local_oauth_http=true
+Negative checks: local HTTP without allow_local_oauth_http rejected; local HTTP with allow_local_oauth_http=false rejected; non-local HTTP with allow_local_oauth_http rejected; direct client_secret arg rejected; non-oauth Secret volume denied
+Temporary resource prefix: run-20260710-cua-oauth-local-http
+```
+
+Cleanup proof:
+
+```text
+kubectl -n lenscloud-runtime-eu get job,configmap,pod \
+  -l lenscloud.io/resource-id=run-20260710-cua-oauth-local-http
+
+No resources found in lenscloud-runtime-eu namespace.
+
+kubectl -n lenscloud-runtime-eu get secret \
+  run-20260710-cua-oauth-local-http-oauth-client-secret --ignore-not-found
+
+<no output>
+```
+
+No OAuth client secret, Kubernetes Secret value, kubeconfig, token, private
+key, pod log, raw `site_config.json`, or full environment dump was recorded.
+
+## Final Status
+
+Complete. Platform may resume CUA OAuth acceptance with the `v0.1.11` runner
+digest and the Platform Settings values above.

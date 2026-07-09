@@ -329,7 +329,7 @@ ghcr.io/lmnaslimited/lenscloud-bench-command-runner@sha256:3e7867ff7cb0285395aaf
 ```
 
 The repo admission manifest is pinned to this digest. Live cluster verification
-for `INF-026` remains pending.
+for `INF-026` passed on 2026-07-10.
 
 ## Result Shape
 
