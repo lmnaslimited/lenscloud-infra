@@ -870,8 +870,54 @@ The target redirect URL is derived from the target Site access URL:
 https://<target-site>/api/method/frappe.integrations.oauth2_logins.custom/<oauth_provider_key>
 ```
 
-Publish and admission-pin a runner image that includes `INF-026`, then run the
-OAuth verifier against a real Platform-managed Bench/Site:
+### Bench Command Runner Digest Enablement
+
+Infra owns enabling the Bench Command runner image on the cluster. Platform
+cannot use a newly published runner digest until Infra has both updated the
+repo admission manifest and applied that manifest to the live cluster.
+
+Do this during first-time restricted Platform access setup and repeat it every
+time a new `ghcr.io/lmnaslimited/lenscloud-bench-command-runner` digest is
+published:
+
+1. Verify the published tag resolves to the expected immutable digest:
+
+   ```bash
+   docker buildx imagetools inspect \
+     ghcr.io/lmnaslimited/lenscloud-bench-command-runner:<tag>
+   ```
+
+2. Pin that digest in the repo admission manifest:
+
+   ```text
+   manifests/access/lenscloud-platform-rbac.yaml
+   ```
+
+3. From the manager/admin checkout, apply the admission manifest to the live
+   cluster:
+
+   ```bash
+   cd /root/lenscloud-infra
+   kubectl apply -f manifests/access/lenscloud-platform-rbac.yaml
+   ```
+
+4. Confirm the live `ValidatingAdmissionPolicy` allows the new immutable image:
+
+   ```bash
+   kubectl get validatingadmissionpolicy \
+     lenscloud-platform-bench-command-job-create -o yaml
+   ```
+
+5. Only after the live policy contains the new digest, run the relevant live
+   verifier script and record the evidence and cleanup proof.
+
+Repo pinning alone is not enough. If the live admission policy still contains
+the previous digest, Platform-created Bench Command Jobs will be denied before
+the runner starts.
+
+For `INF-026`, publish and admission-pin a runner image that includes the
+local-dev OAuth issuer contract, then run the OAuth verifier against a real
+Platform-managed Bench/Site:
 
 ```bash
 export RUNNER_IMAGE='ghcr.io/lmnaslimited/lenscloud-bench-command-runner@sha256:3e7867ff7cb0285395aafd380232496f854c6d014c237b8790cbcbfd1bd577ef'
