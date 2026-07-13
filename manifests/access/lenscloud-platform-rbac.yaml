@@ -363,6 +363,9 @@ spec:
           'site_config',
           'cors',
           'site_setup',
+          'site_bootstrap',
+          'site_app',
+          'bench',
           'oauth',
           'bench_test',
           'latp'
@@ -385,7 +388,7 @@ spec:
             )))
         && object.spec.template.spec.containers.all(container,
           (
-            container.image == 'ghcr.io/lmnaslimited/lenscloud-bench-command-runner@sha256:3e7867ff7cb0285395aafd380232496f854c6d014c237b8790cbcbfd1bd577ef'
+            container.image == 'ghcr.io/lmnaslimited/lenscloud-bench-command-runner@sha256:0ba81c0f4031d452eab71a463a562d5f07ace308ae87967725dd807e00c97570'
             || (
               object.metadata.annotations['lenscloud.io/bench-command-family'] == 'bench_test'
               && 'lenscloud.io/bench-command' in object.metadata.annotations

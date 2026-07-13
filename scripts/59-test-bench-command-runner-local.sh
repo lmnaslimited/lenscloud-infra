@@ -142,6 +142,33 @@ run_command setup_sensitive_reject \
   "{\"apiVersion\":\"lenscloud.io/v1\",\"kind\":\"BenchCommand\",\"commandId\":\"local-13\",\"command\":\"site_setup.complete\",${base_target},\"args\":{\"language\":\"English\",\"admin_password\":\"must-not-leak\"},\"timeoutSeconds\":60}" \
   1 | grep '"code":"INVALID_ARGUMENTS"' >/dev/null
 
+run_command bootstrap_install_apps \
+  "{\"apiVersion\":\"lenscloud.io/v1\",\"kind\":\"BenchCommand\",\"commandId\":\"local-13a\",\"command\":\"site_bootstrap.install_apps\",${base_target},\"args\":{\"install_apps\":[{\"app\":\"erpnext\",\"install_sequence\":20},{\"app\":\"hrms\",\"install_sequence\":30}]},\"timeoutSeconds\":60}" |
+  grep -F '"installed_apps":["erpnext","hrms"]' >/dev/null
+
+run_command bootstrap_install_apps_idempotent \
+  "{\"apiVersion\":\"lenscloud.io/v1\",\"kind\":\"BenchCommand\",\"commandId\":\"local-13b\",\"command\":\"site_bootstrap.install_apps\",${base_target},\"args\":{\"install_apps\":[{\"app\":\"erpnext\",\"install_sequence\":20},{\"app\":\"hrms\",\"install_sequence\":30}]},\"timeoutSeconds\":60}" |
+  grep -F '"skipped_apps":["erpnext","hrms"]' >/dev/null
+
+run_command existing_site_install_app \
+  "{\"apiVersion\":\"lenscloud.io/v1\",\"kind\":\"BenchCommand\",\"commandId\":\"local-13c\",\"command\":\"site_app.install\",${base_target},\"args\":{\"apps\":[{\"app\":\"payments\",\"install_sequence\":30}]},\"timeoutSeconds\":60}" |
+  grep -F '"installed_apps":["payments"]' >/dev/null
+
+run_command install_frappe_reject \
+  "{\"apiVersion\":\"lenscloud.io/v1\",\"kind\":\"BenchCommand\",\"commandId\":\"local-13d\",\"command\":\"site_app.install\",${base_target},\"args\":{\"apps\":[{\"app\":\"frappe\",\"install_sequence\":1}]},\"timeoutSeconds\":60}" \
+  1 | grep '"code":"INVALID_ARGUMENTS"' >/dev/null
+
+bench_target='"target":{"namespace":"lenscloud-runtime-eu","bench":"runner-test-bench"}'
+
+run_command bench_update \
+  "{\"apiVersion\":\"lenscloud.io/v1\",\"kind\":\"BenchCommand\",\"commandId\":\"local-13e\",\"command\":\"bench.update\",${bench_target},\"args\":{\"target_release\":\"v16.14.2\"},\"timeoutSeconds\":60}" |
+  grep -F '"target_release":"v16.14.2"' |
+  grep -F '"summary":"Bench update completed"' >/dev/null
+
+run_command bench_update_reject_site_target \
+  "{\"apiVersion\":\"lenscloud.io/v1\",\"kind\":\"BenchCommand\",\"commandId\":\"local-13f\",\"command\":\"bench.update\",${base_target},\"args\":{\"target_release\":\"v16.14.2\"},\"timeoutSeconds\":60}" \
+  1 | grep '"code":"INVALID_ARGUMENTS"' >/dev/null
+
 run_command oauth_status_missing \
   "{\"apiVersion\":\"lenscloud.io/v1\",\"kind\":\"BenchCommand\",\"commandId\":\"local-14\",\"command\":\"oauth.status\",${base_target},\"args\":{\"provider\":\"platform_oauth_https\"},\"timeoutSeconds\":60}" |
   grep -F '"summary":"Social login is not configured"' >/dev/null

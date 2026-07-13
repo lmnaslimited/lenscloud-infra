@@ -412,10 +412,127 @@ Platform should normalize Job state to:
 | `cors` | `cors.allowlist.update`, `cors.allowlist.get` | Runner source/local verified; ready for Platform policy-gated integration and per-command acceptance | Wildcard origin rejected by runner |
 | `bench_test` | `bench_test.trigger`, `bench_test.status` | Platform smoke available for `bench_test.status`; production suite runner pending | Phase 1 positive proof uses harmless `bench_test.status` contract check |
 | `latp` | `latp.trigger`, `latp.status` | Contracted, runner pending | Production LATP must be non-destructive |
+| `site_bootstrap` | `site_bootstrap.install_apps` | Runner source/local verified; image/live verification pending | Ordered Release Group app install after base Site creation; rejects `frappe`; skips already-installed apps |
+| `site_app` | `site_app.install` | Runner source/local verified; image/live verification pending | Existing Site app install for eligible Release Group apps; supports small ordered batches |
+| `bench` | `bench.update` | Runner source/local verified; image/live verification pending | Bench-targeted command; runs `bench --site all migrate`; request must not include `site` |
 
 Known unsupported commands must return `Unsupported` with
 `COMMAND_UNSUPPORTED`; Platform should show that truthfully and not claim live
 runtime enforcement for that control.
+
+## Release Group App Install And Bench Update
+
+`INF-027` adds runner source support for Release Group app install and Bench
+update commands. Platform may integrate after Infra publishes, pins, and
+live-verifies the updated runner image.
+
+`frappe` is never an install app payload item. The base Frappe runtime must
+already exist before `site_bootstrap.install_apps` or `site_app.install` runs.
+
+New Site bootstrap app install request:
+
+```json
+{
+  "command": "site_bootstrap.install_apps",
+  "target": {
+    "namespace": "lenscloud-runtime-eu",
+    "bench": "bench-name",
+    "site": "customer-site.example"
+  },
+  "args": {
+    "install_apps": [
+      {
+        "app": "erpnext",
+        "install_sequence": 20
+      },
+      {
+        "app": "hrms",
+        "install_sequence": 30
+      }
+    ]
+  }
+}
+```
+
+Existing Site app install request:
+
+```json
+{
+  "command": "site_app.install",
+  "target": {
+    "namespace": "lenscloud-runtime-eu",
+    "bench": "bench-name",
+    "site": "customer-site.example"
+  },
+  "args": {
+    "apps": [
+      {
+        "app": "payments",
+        "install_sequence": 30
+      }
+    ]
+  }
+}
+```
+
+Bench update request:
+
+```json
+{
+  "command": "bench.update",
+  "target": {
+    "namespace": "lenscloud-runtime-eu",
+    "bench": "bench-name"
+  },
+  "args": {
+    "target_release": "v16.14.2"
+  }
+}
+```
+
+App install result details:
+
+```json
+{
+  "attempted_apps": ["erpnext", "hrms"],
+  "installed_apps": ["erpnext"],
+  "skipped_apps": ["hrms"],
+  "failed_app": null,
+  "exit_code": 0,
+  "error_excerpt": null
+}
+```
+
+Bench update result details:
+
+```json
+{
+  "target_release": "v16.14.2",
+  "operation": "bench --site all migrate",
+  "exit_code": 0,
+  "error_excerpt": null
+}
+```
+
+Admission/RBAC expectations:
+
+- allow Bench Command families `site_bootstrap`, `site_app`, and `bench`;
+- continue to deny wrong namespace, unsafe Job shape, non-runner images,
+  Secret mounts for these non-OAuth commands, service-account tokens,
+  `envFrom`, pod logs, and Secret access;
+- cleanup remains Job, request ConfigMap, and terminal Platform-labelled pod
+  cleanup only.
+
+Platform validations still required:
+
+- include only Release Group child rows selected for Site creation in
+  `site_bootstrap.install_apps`;
+- sort app payloads by ascending `install_sequence`, empty values last;
+- reject target apps outside the Bench Release Group;
+- require `upgrade_tested`, `tested_on`, and `tested_by` before Site
+  `upgrade_state = Scheduled`;
+- require every active Site on the Bench to be Scheduled before `bench.update`;
+- require target Release to belong to the Bench Release Group.
 
 ## CUA Site Bootstrap And SSO Commands
 

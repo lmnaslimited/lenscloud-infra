@@ -94,6 +94,9 @@ Current implemented commands:
 - `cors.allowlist.get`
 - `site_setup.status`
 - `site_setup.complete`
+- `site_bootstrap.install_apps`
+- `site_app.install`
+- `bench.update`
 - `oauth.status`
 - `oauth.configure`
 - `backup.status`
@@ -117,11 +120,11 @@ Build example:
 
 ```bash
 docker build \
-  -t ghcr.io/lmnaslimited/lenscloud-bench-command-runner:v0.1.11 \
+  -t ghcr.io/lmnaslimited/lenscloud-bench-command-runner:v0.1.12 \
   bench-command-runner
 ```
 
-Published image:
+Current published image:
 
 ```text
 ghcr.io/lmnaslimited/lenscloud-bench-command-runner:v0.1.11
@@ -137,6 +140,36 @@ scripts/65-verify-cua-oauth-runner.sh
 
 Cluster pull access must be verified in each runtime environment before
 Platform enables newly implemented commands.
+
+`v0.1.12` local build passed for `INF-027` with local image ID
+`sha256:811df7d8594c5390b13eea1c2fb01c32e26f69c424312043e5dbbb2553b6ef7b`.
+It has not been pushed to GHCR yet, so there is no immutable registry digest to
+pin.
+
+## Release Group App Install And Bench Update
+
+`site_bootstrap.install_apps` installs Release Group apps selected for new Site
+bootstrap after the base Frappe Site exists. `site_app.install` installs an
+eligible app, or small ordered batch, on an existing Site. Both commands:
+
+- require a Site target;
+- reject `frappe` because Frappe is the base runtime, not an install app item;
+- preserve the ordered app payload;
+- skip apps already installed and report them in `skipped_apps`;
+- return `attempted_apps`, `installed_apps`, `skipped_apps`, `failed_app`,
+  `exit_code`, and sanitized `error_excerpt`.
+
+`bench.update` is Bench-targeted and must not include a Site target. The runner
+executes the operator-safe Bench migration step:
+
+```text
+bench --site all migrate
+```
+
+Platform remains responsible for setting/validating `Bench.next_release`,
+ensuring the Release belongs to the Bench Release Group, and requiring every
+active Site on the Bench to be scheduled and tested before creating the command
+Job.
 
 ## OAuth Secret Boundary
 

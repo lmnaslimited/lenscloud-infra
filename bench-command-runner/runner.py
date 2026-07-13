@@ -42,6 +42,9 @@ COMMANDS = {
     "cors.allowlist.get",
     "site_setup.status",
     "site_setup.complete",
+    "site_bootstrap.install_apps",
+    "site_app.install",
+    "bench.update",
     "oauth.status",
     "oauth.configure",
     "bench_test.trigger",
@@ -79,6 +82,8 @@ SAFE_STATUS_KEYS = {
 }
 SITE_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]{0,190}$")
 NAME_RE = re.compile(r"^[a-z0-9][a-z0-9-]{0,190}$")
+APP_RE = re.compile(r"^[a-z0-9][a-z0-9_-]{0,79}$")
+RELEASE_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.:-]{0,139}$")
 PROVIDER_RE = re.compile(r"^[a-z0-9][a-z0-9_ -]{0,80}$")
 URL_RE = re.compile(r"^https://[A-Za-z0-9][A-Za-z0-9_.:/?&=%#@+~,-]*$")
 RELATIVE_ENDPOINT_RE = re.compile(r"^/[A-Za-z0-9_./?&=%#@+~,-]*$")
@@ -101,6 +106,7 @@ BENCH_PATH = getenv_path("BENCH_PATH", "/home/frappe/frappe-bench")
 SITES_PATH = getenv_path("BENCH_SITES_PATH", str(BENCH_PATH / "sites"))
 TERMINATION_PATH = Path(os.environ.get("BENCH_COMMAND_TERMINATION_LOG", "/dev/termination-log"))
 BENCH_PYTHON = Path(os.environ.get("BENCH_PYTHON", str(BENCH_PATH / "env" / "bin" / "python")))
+BENCH_EXECUTABLE = Path(os.environ.get("BENCH_EXECUTABLE", str(BENCH_PATH / "env" / "bin" / "bench")))
 FAKE_FRAPPE_SETUP = os.environ.get("LENS_COMMAND_FAKE_FRAPPE_SETUP") == "1"
 MAX_SETUP_ARGS_BYTES = int(os.environ.get("LENS_COMMAND_MAX_SETUP_ARGS_BYTES", "16384"))
 OAUTH_CLIENT_SECRET_PATH = Path(
@@ -227,15 +233,17 @@ def result(
     details: dict[str, Any] | None = None,
     display: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
+    target_payload = {
+        "namespace": target.get("namespace"),
+        "bench": target.get("bench"),
+    }
+    if target.get("site") not in (None, ""):
+        target_payload["site"] = target.get("site")
     payload = {
         "phase": phase,
         "commandId": current_request.get("commandId"),
         "command": command,
-        "target": {
-            "namespace": target.get("namespace"),
-            "bench": target.get("bench"),
-            "site": target.get("site"),
-        },
+        "target": target_payload,
         "summary": summary,
         "changed": changed,
         "redacted": True,
@@ -338,7 +346,10 @@ def validate_request(req: dict[str, Any]) -> tuple[str, dict[str, Any], dict[str
         raise CommandError("NAMESPACE_NOT_APPROVED", "target namespace is invalid")
     if not NAME_RE.match(bench):
         raise CommandError("TARGET_NOT_FOUND", "target bench is invalid")
-    if not SITE_RE.match(site) or ".." in site or "/" in site:
+    if command == "bench.update":
+        if site:
+            raise CommandError("INVALID_ARGUMENTS", "bench.update target must not include site")
+    elif not SITE_RE.match(site) or ".." in site or "/" in site:
         raise CommandError("TARGET_NOT_FOUND", "target site is invalid")
 
     args = req.get("args") or {}
@@ -478,6 +489,98 @@ def fake_oauth_state(site: str) -> tuple[Path, dict[str, Any]]:
         state = {}
     state.setdefault("_layout", layout)
     return state_path, state
+
+
+def fake_apps_state(site: str) -> tuple[Path, dict[str, Any]]:
+    site_root, layout = site_root_path(site)
+    state_path = site_root / ".lenscloud_apps_state.json"
+    if state_path.exists():
+        try:
+            state = json.loads(state_path.read_text(encoding="utf-8"))
+        except json.JSONDecodeError:
+            state = {}
+    else:
+        state = {}
+    if not isinstance(state, dict):
+        state = {}
+    installed = state.get("installed_apps")
+    if not isinstance(installed, list):
+        installed = []
+    state["installed_apps"] = [str(item).strip().lower() for item in installed if str(item).strip()]
+    state["_layout"] = layout
+    return state_path, state
+
+
+def fake_bench_update_state() -> tuple[Path, dict[str, Any]]:
+    state_path = SITES_PATH / ".lenscloud_bench_update_state.json"
+    if state_path.exists():
+        try:
+            state = json.loads(state_path.read_text(encoding="utf-8"))
+        except json.JSONDecodeError:
+            state = {}
+    else:
+        state = {}
+    if not isinstance(state, dict):
+        state = {}
+    return state_path, state
+
+
+def validate_app_name(value: Any) -> str:
+    app = str(value or "").strip().lower()
+    if not app or not APP_RE.match(app):
+        raise CommandError("INVALID_ARGUMENTS", "app must be a safe lower-case app identifier")
+    if app == "frappe":
+        raise CommandError("INVALID_ARGUMENTS", "frappe is the base runtime and must not be an install app")
+    return app
+
+
+def validate_install_sequence(value: Any) -> int | None:
+    if value in (None, ""):
+        return None
+    try:
+        sequence = int(value)
+    except (TypeError, ValueError) as exc:
+        raise CommandError("INVALID_ARGUMENTS", "install_sequence must be an integer") from exc
+    if sequence < 0 or sequence > 100000:
+        raise CommandError("INVALID_ARGUMENTS", "install_sequence must be between 0 and 100000")
+    return sequence
+
+
+def validate_app_batch(command: str, args: dict[str, Any]) -> list[dict[str, Any]]:
+    key = "install_apps" if command == "site_bootstrap.install_apps" else "apps"
+    apps = args.get(key)
+    if apps is None and command == "site_app.install":
+        apps = args.get("install_apps")
+    if not isinstance(apps, list) or not apps:
+        raise CommandError("INVALID_ARGUMENTS", f"{command} requires a non-empty ordered app list")
+    if len(apps) > 10:
+        raise CommandError("INVALID_ARGUMENTS", f"{command} accepts at most 10 apps")
+    clean: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for item in apps:
+        if isinstance(item, str):
+            item = {"app": item}
+        if not isinstance(item, dict):
+            raise CommandError("INVALID_ARGUMENTS", "app install items must be objects")
+        unknown = set(item) - {"app", "install_sequence"}
+        if unknown:
+            raise CommandError("INVALID_ARGUMENTS", "app install item contains unsupported fields")
+        app = validate_app_name(item.get("app"))
+        if app in seen:
+            raise CommandError("INVALID_ARGUMENTS", "app install payload contains duplicate apps")
+        seen.add(app)
+        clean.append({"app": app, "install_sequence": validate_install_sequence(item.get("install_sequence"))})
+    return clean
+
+
+def validate_target_release(args: dict[str, Any]) -> str:
+    unknown = set(args) - {"target_release"}
+    if unknown:
+        raise CommandError("INVALID_ARGUMENTS", "bench.update contains unsupported args")
+    target_release = str(args.get("target_release") or "").strip()
+    if not target_release or not RELEASE_RE.match(target_release):
+        raise CommandError("INVALID_ARGUMENTS", "bench.update requires a safe target_release")
+    return target_release
 
 
 def validate_setup_args(args: dict[str, Any]) -> dict[str, Any]:
@@ -733,6 +836,61 @@ finally:
 """
 
 
+FRAPPE_APP_INSTALL_SCRIPT = r"""
+import json
+import sys
+
+site = sys.argv[1]
+sites_path = sys.argv[2]
+payload = json.loads(sys.stdin.read() or "{}")
+
+import frappe
+from frappe.installer import install_app
+
+frappe.init(site=site, sites_path=sites_path)
+frappe.connect()
+
+attempted = [item["app"] for item in payload.get("apps", [])]
+installed_apps = []
+skipped_apps = []
+failed_app = None
+error_excerpt = None
+
+try:
+    current_apps = set(frappe.get_installed_apps())
+    for item in payload.get("apps", []):
+        app = item["app"]
+        if app in current_apps:
+            skipped_apps.append(app)
+            continue
+        try:
+            try:
+                install_app(app, verbose=False, set_as_patched=True)
+            except TypeError:
+                install_app(app, verbose=False)
+            frappe.db.commit()
+            installed_apps.append(app)
+            current_apps.add(app)
+        except Exception as exc:
+            frappe.db.rollback()
+            failed_app = app
+            error_excerpt = str(exc)[:500]
+            break
+    print(json.dumps({
+        "attempted_apps": attempted,
+        "installed_apps": installed_apps,
+        "skipped_apps": skipped_apps,
+        "failed_app": failed_app,
+        "error_excerpt": error_excerpt,
+        "exit_code": 1 if failed_app else 0,
+    }, sort_keys=True, separators=(",", ":")))
+finally:
+    if getattr(frappe.local, "db", None):
+        frappe.db.close()
+    frappe.destroy()
+"""
+
+
 def run_frappe_setup(site: str, operation: str, args: dict[str, Any], timeout: int) -> dict[str, Any]:
     if FAKE_FRAPPE_SETUP:
         state_path, state = fake_setup_state(site)
@@ -781,6 +939,201 @@ def run_frappe_setup(site: str, operation: str, args: dict[str, Any], timeout: i
     if not isinstance(payload, dict):
         raise CommandError("RUNNER_FAILED", "site setup command returned invalid result")
     return payload
+
+
+def run_frappe_app_install(site: str, apps: list[dict[str, Any]], timeout: int) -> dict[str, Any]:
+    if FAKE_FRAPPE_SETUP:
+        state_path, state = fake_apps_state(site)
+        installed_set = set(state["installed_apps"])
+        attempted = [item["app"] for item in apps]
+        installed_apps = []
+        skipped_apps = []
+        for app in attempted:
+            if app in installed_set:
+                skipped_apps.append(app)
+                continue
+            installed_set.add(app)
+            installed_apps.append(app)
+        state["installed_apps"] = sorted(installed_set)
+        state_path.write_text(json.dumps(state, sort_keys=True, separators=(",", ":")) + "\n", encoding="utf-8")
+        return {
+            "attempted_apps": attempted,
+            "installed_apps": installed_apps,
+            "skipped_apps": skipped_apps,
+            "failed_app": None,
+            "error_excerpt": None,
+            "exit_code": 0,
+            "layout": state.get("_layout"),
+        }
+
+    if not BENCH_PYTHON.is_file():
+        raise CommandError("RUNNER_FAILED", "bench Python environment was not found")
+
+    Path("/home/frappe/logs").mkdir(parents=True, exist_ok=True)
+    with prepared_frappe_sites_path(site) as temp_sites:
+        env = dict(os.environ)
+        env["FRAPPE_STREAM_LOGGING"] = "1"
+        try:
+            completed = subprocess.run(
+                [str(BENCH_PYTHON), "-c", FRAPPE_APP_INSTALL_SCRIPT, site, str(temp_sites)],
+                input=json.dumps({"apps": apps}, sort_keys=True, separators=(",", ":")),
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                cwd=str(BENCH_PATH),
+                env=env,
+                timeout=timeout,
+                check=False,
+            )
+        except subprocess.TimeoutExpired as exc:
+            raise CommandError("TIMEOUT", "app install command timed out", "Timed Out") from exc
+
+    if completed.returncode != 0:
+        raise CommandError("RUNNER_FAILED", "app install command failed with sanitized error")
+    output_lines = [line for line in completed.stdout.splitlines() if line.strip()]
+    if not output_lines:
+        raise CommandError("RUNNER_FAILED", "app install command did not return a result")
+    try:
+        payload = json.loads(output_lines[-1])
+    except json.JSONDecodeError as exc:
+        raise CommandError("RUNNER_FAILED", "app install command returned invalid JSON") from exc
+    if not isinstance(payload, dict):
+        raise CommandError("RUNNER_FAILED", "app install command returned invalid result")
+    if payload.get("exit_code"):
+        payload["error_excerpt"] = sanitize(str(payload.get("error_excerpt") or ""))[:500]
+    return payload
+
+
+def command_site_app_install(command: str, target: dict[str, Any], args: dict[str, Any]) -> dict[str, Any]:
+    site = str(target["site"])
+    apps = validate_app_batch(command, args)
+    timeout = request_timeout_seconds()
+    state = run_frappe_app_install(site, apps, timeout)
+    failed_app = state.get("failed_app")
+    installed_apps = state.get("installed_apps") if isinstance(state.get("installed_apps"), list) else []
+    skipped_apps = state.get("skipped_apps") if isinstance(state.get("skipped_apps"), list) else []
+    attempted_apps = state.get("attempted_apps") if isinstance(state.get("attempted_apps"), list) else [item["app"] for item in apps]
+    if failed_app:
+        summary = f"App install failed for {failed_app}"
+    elif installed_apps:
+        summary = "Installed requested apps"
+    else:
+        summary = "All requested apps already installed"
+    return result(
+        phase="Failed" if failed_app else "Succeeded",
+        command=command,
+        target=target,
+        summary=summary,
+        changed=bool(installed_apps),
+        code="RUNNER_FAILED" if failed_app else None,
+        details={
+            "attempted_apps": attempted_apps,
+            "installed_apps": installed_apps,
+            "skipped_apps": skipped_apps,
+            "failed_app": failed_app,
+            "exit_code": int(state.get("exit_code") or 0),
+            "error_excerpt": state.get("error_excerpt"),
+            "layout": state.get("layout"),
+        },
+        display={
+            "label": "App install",
+            "value": summary,
+            "kind": "app-install",
+            "rawValue": {
+                "attempted_apps": attempted_apps,
+                "installed_apps": installed_apps,
+                "skipped_apps": skipped_apps,
+                "failed_app": failed_app,
+            },
+            "safe": True,
+        },
+    )
+
+
+def bench_executable() -> list[str]:
+    if BENCH_EXECUTABLE.is_file():
+        return [str(BENCH_EXECUTABLE)]
+    discovered = shutil.which("bench")
+    if discovered:
+        return [discovered]
+    if BENCH_PYTHON.is_file():
+        return [str(BENCH_PYTHON), "-m", "bench.cli"]
+    raise CommandError("RUNNER_FAILED", "bench executable was not found")
+
+
+def run_bench_update(target_release: str, timeout: int) -> dict[str, Any]:
+    if FAKE_FRAPPE_SETUP:
+        state_path, state = fake_bench_update_state()
+        previous = state.get("target_release")
+        changed = previous != target_release
+        state.update(
+            {
+                "target_release": target_release,
+                "last_command": "bench --site all migrate",
+                "exit_code": 0,
+            }
+        )
+        state_path.write_text(json.dumps(state, sort_keys=True, separators=(",", ":")) + "\n", encoding="utf-8")
+        return {
+            "target_release": target_release,
+            "changed": changed,
+            "exit_code": 0,
+            "operation": "bench --site all migrate",
+        }
+
+    command = bench_executable() + ["--site", "all", "migrate"]
+    try:
+        completed = subprocess.run(
+            command,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            cwd=str(BENCH_PATH),
+            env=dict(os.environ),
+            timeout=timeout,
+            check=False,
+        )
+    except subprocess.TimeoutExpired as exc:
+        raise CommandError("TIMEOUT", "bench update command timed out", "Timed Out") from exc
+
+    return {
+        "target_release": target_release,
+        "changed": completed.returncode == 0,
+        "exit_code": completed.returncode,
+        "operation": "bench --site all migrate",
+        "error_excerpt": sanitize((completed.stderr or completed.stdout or "")[-500:]) if completed.returncode else None,
+    }
+
+
+def command_bench_update(command: str, target: dict[str, Any], args: dict[str, Any]) -> dict[str, Any]:
+    target_release = validate_target_release(args)
+    timeout = request_timeout_seconds()
+    state = run_bench_update(target_release, timeout)
+    exit_code = int(state.get("exit_code") or 0)
+    return result(
+        phase="Succeeded" if exit_code == 0 else "Failed",
+        command=command,
+        target=target,
+        summary="Bench update completed" if exit_code == 0 else "Bench update failed",
+        changed=bool(state.get("changed")),
+        code=None if exit_code == 0 else "RUNNER_FAILED",
+        details={
+            "target_release": target_release,
+            "operation": state.get("operation"),
+            "exit_code": exit_code,
+            "error_excerpt": state.get("error_excerpt"),
+        },
+        display={
+            "label": "Bench update",
+            "value": "Completed" if exit_code == 0 else "Failed",
+            "kind": "bench-update",
+            "rawValue": {
+                "target_release": target_release,
+                "exit_code": exit_code,
+            },
+            "safe": True,
+        },
+    )
 
 
 def oauth_display(state: dict[str, Any]) -> dict[str, Any]:
@@ -1239,6 +1592,10 @@ def dispatch(command: str, target: dict[str, Any], args: dict[str, Any]) -> dict
         return command_cors(command, target, args)
     if command.startswith("site_setup."):
         return command_site_setup(command, target, args)
+    if command.startswith("site_bootstrap.") or command.startswith("site_app."):
+        return command_site_app_install(command, target, args)
+    if command.startswith("bench."):
+        return command_bench_update(command, target, args)
     if command.startswith("oauth."):
         return command_oauth(command, target, args)
     raise CommandError("COMMAND_UNSUPPORTED", "command is contracted but not implemented", "Unsupported")
