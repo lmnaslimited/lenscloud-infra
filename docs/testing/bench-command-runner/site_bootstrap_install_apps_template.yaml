@@ -1,0 +1,48 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: $TEST_NAME
+  namespace: $RUNTIME_NAMESPACE
+  labels:
+    lenscloud.io/managed-by: platform
+    lenscloud.io/resource-kind: bench-command
+  annotations:
+    lenscloud.io/bench-command-family: site_bootstrap
+    lenscloud.io/bench-command: site_bootstrap.install_apps
+spec:
+  backoffLimit: 0
+  template:
+    metadata:
+      labels:
+        lenscloud.io/managed-by: platform
+        lenscloud.io/resource-kind: bench-command
+      annotations:
+        lenscloud.io/bench-command-family: site_bootstrap
+        lenscloud.io/bench-command: site_bootstrap.install_apps
+    spec:
+      restartPolicy: Never
+      automountServiceAccountToken: false
+      containers:
+        - name: lenscloud-bench-command-runner
+          image: $RUNNER_IMAGE
+          securityContext:
+            privileged: false
+          env:
+            - name: BENCH_PATH
+              value: /home/frappe/frappe-bench
+            - name: BENCH_COMMAND_REQUEST
+              value: /lenscloud/request/request.json
+          volumeMounts:
+            - name: request
+              mountPath: /lenscloud/request
+              readOnly: true
+            - name: sites
+              mountPath: /home/frappe/frappe-bench/sites
+              readOnly: false
+      volumes:
+        - name: request
+          configMap:
+            name: $TEST_NAME-request
+        - name: sites
+          persistentVolumeClaim:
+            claimName: $REAL_SITES_PVC
