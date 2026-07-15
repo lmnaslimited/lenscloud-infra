@@ -525,6 +525,35 @@ def fake_bench_update_state() -> tuple[Path, dict[str, Any]]:
     return state_path, state
 
 
+@contextmanager
+def prepared_bench_apps_txt() -> Iterator[None]:
+    apps_txt = SITES_PATH / "apps.txt"
+    if apps_txt.exists():
+        yield
+        return
+
+    apps_root = BENCH_PATH / "apps"
+    app_names = sorted(
+        item.name
+        for item in apps_root.iterdir()
+        if item.is_dir() and not item.name.startswith(".")
+    ) if apps_root.is_dir() else []
+    if not app_names:
+        raise CommandError("RUNNER_FAILED", "sites/apps.txt was not found and no bench apps were discoverable")
+    if "frappe" in app_names:
+        app_names = ["frappe"] + [app for app in app_names if app != "frappe"]
+
+    apps_txt.parent.mkdir(parents=True, exist_ok=True)
+    apps_txt.write_text("\n".join(app_names) + "\n", encoding="utf-8")
+    try:
+        yield
+    finally:
+        try:
+            apps_txt.unlink()
+        except FileNotFoundError:
+            pass
+
+
 def validate_app_name(value: Any) -> str:
     app = str(value or "").strip().lower()
     if not app or not APP_RE.match(app):
@@ -1083,16 +1112,17 @@ def run_bench_update(target_release: str, timeout: int) -> dict[str, Any]:
 
     command = bench_executable() + ["--site", "all", "migrate"]
     try:
-        completed = subprocess.run(
-            command,
-            text=True,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            cwd=str(BENCH_PATH),
-            env=dict(os.environ),
-            timeout=timeout,
-            check=False,
-        )
+        with prepared_bench_apps_txt():
+            completed = subprocess.run(
+                command,
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                cwd=str(BENCH_PATH),
+                env=dict(os.environ),
+                timeout=timeout,
+                check=False,
+            )
     except subprocess.TimeoutExpired as exc:
         raise CommandError("TIMEOUT", "bench update command timed out", "Timed Out") from exc
 

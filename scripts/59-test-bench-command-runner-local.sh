@@ -169,6 +169,38 @@ run_command bench_update_reject_site_target \
   "{\"apiVersion\":\"lenscloud.io/v1\",\"kind\":\"BenchCommand\",\"commandId\":\"local-13f\",\"command\":\"bench.update\",${base_target},\"args\":{\"target_release\":\"v16.14.2\"},\"timeoutSeconds\":60}" \
   1 | grep '"code":"INVALID_ARGUMENTS"' >/dev/null
 
+mkdir -p "$bench_path/apps/frappe" "$bench_path/apps/erpnext" "$bench_path/apps/hrms"
+fake_bench="$tmpdir/fake-bench"
+cat >"$fake_bench" <<'SH'
+#!/usr/bin/env bash
+set -euo pipefail
+if [[ ! -f sites/apps.txt ]]; then
+  echo "sites/apps.txt missing" >&2
+  exit 37
+fi
+grep -Fx frappe sites/apps.txt >/dev/null
+grep -Fx erpnext sites/apps.txt >/dev/null
+grep -Fx hrms sites/apps.txt >/dev/null
+printf '%s\n' "$*" >sites/.bench-update-command
+SH
+chmod +x "$fake_bench"
+
+request_path="$tmpdir/request/bench_update_prepares_apps_txt.json"
+termination_path="$tmpdir/request/bench_update_prepares_apps_txt.termination.json"
+printf '%s\n' "{\"apiVersion\":\"lenscloud.io/v1\",\"kind\":\"BenchCommand\",\"commandId\":\"local-13g\",\"command\":\"bench.update\",${bench_target},\"args\":{\"target_release\":\"v16.14.3\"},\"timeoutSeconds\":60}" >"$request_path"
+BENCH_PATH="$bench_path" \
+BENCH_EXECUTABLE="$fake_bench" \
+BENCH_COMMAND_REQUEST="$request_path" \
+BENCH_COMMAND_TERMINATION_LOG="$termination_path" \
+  python3 bench-command-runner/runner.py >/dev/null
+grep -F '"summary":"Bench update completed"' "$termination_path" >/dev/null
+grep -F -- '--site all migrate' "$bench_path/sites/.bench-update-command" >/dev/null
+if [[ -f "$bench_path/sites/apps.txt" ]]; then
+  echo "bench.update left behind generated sites/apps.txt" >&2
+  cat "$bench_path/sites/apps.txt" >&2
+  exit 1
+fi
+
 run_command oauth_status_missing \
   "{\"apiVersion\":\"lenscloud.io/v1\",\"kind\":\"BenchCommand\",\"commandId\":\"local-14\",\"command\":\"oauth.status\",${base_target},\"args\":{\"provider\":\"platform_oauth_https\"},\"timeoutSeconds\":60}" |
   grep -F '"summary":"Social login is not configured"' >/dev/null
