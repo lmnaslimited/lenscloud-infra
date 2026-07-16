@@ -554,6 +554,38 @@ def prepared_bench_apps_txt() -> Iterator[None]:
             pass
 
 
+def bench_site_roots() -> list[tuple[str, Path]]:
+    sites: dict[str, Path] = {}
+    for root in (SITES_PATH, SITES_PATH / "frappe-sites"):
+        if not root.is_dir():
+            continue
+        for item in root.iterdir():
+            if not item.is_dir() or item.name.startswith("."):
+                continue
+            site = item.name
+            if SITE_RE.match(site) and ".." not in site and "/" not in site and (item / "site_config.json").is_file():
+                sites.setdefault(site, item)
+    if not sites:
+        raise CommandError("TARGET_NOT_FOUND", "bench.update found no sites to migrate")
+    return sorted(sites.items())
+
+
+@contextmanager
+def prepared_bench_all_sites_path() -> Iterator[Path]:
+    with tempfile.TemporaryDirectory(prefix="lenscloud-bench-sites-") as temp_name:
+        temp_sites = Path(temp_name)
+        for metadata_name in ("common_site_config.json", "apps.txt", "apps.json"):
+            metadata_path = SITES_PATH / metadata_name
+            if metadata_path.exists():
+                os.symlink(metadata_path.resolve(), temp_sites / metadata_name)
+        for site, source_root in bench_site_roots():
+            target_root = temp_sites / site
+            target_root.mkdir()
+            for child in source_root.iterdir():
+                os.symlink(child.resolve(), target_root / child.name)
+        yield temp_sites
+
+
 def validate_app_name(value: Any) -> str:
     app = str(value or "").strip().lower()
     if not app or not APP_RE.match(app):
@@ -1131,39 +1163,40 @@ def run_bench_update(target_release: str, timeout: int) -> dict[str, Any]:
     completed_steps: list[str] = []
     try:
         with prepared_bench_apps_txt():
-            for step, args in steps:
-                completed = subprocess.run(
-                    executable + args,
-                    text=True,
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
-                    cwd=str(BENCH_PATH),
-                    env=dict(os.environ),
-                    timeout=timeout,
-                    check=False,
-                )
-                if completed.returncode != 0:
-                    failed_step = step
-                    failed_result = completed
-                    break
-                completed_steps.append(step)
-            for step, args in cleanup_steps:
-                cleanup = subprocess.run(
-                    executable + args,
-                    text=True,
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
-                    cwd=str(BENCH_PATH),
-                    env=dict(os.environ),
-                    timeout=timeout,
-                    check=False,
-                )
-                if cleanup.returncode != 0 and failed_result is None:
-                    failed_step = step
-                    failed_result = cleanup
-                    break
-                if cleanup.returncode == 0:
+            with prepared_bench_all_sites_path() as bench_sites_path:
+                for step, args in steps:
+                    completed = subprocess.run(
+                        executable + args,
+                        text=True,
+                        stdout=subprocess.PIPE,
+                        stderr=subprocess.PIPE,
+                        cwd=str(bench_sites_path),
+                        env=dict(os.environ),
+                        timeout=timeout,
+                        check=False,
+                    )
+                    if completed.returncode != 0:
+                        failed_step = step
+                        failed_result = completed
+                        break
                     completed_steps.append(step)
+                for step, args in cleanup_steps:
+                    cleanup = subprocess.run(
+                        executable + args,
+                        text=True,
+                        stdout=subprocess.PIPE,
+                        stderr=subprocess.PIPE,
+                        cwd=str(bench_sites_path),
+                        env=dict(os.environ),
+                        timeout=timeout,
+                        check=False,
+                    )
+                    if cleanup.returncode != 0 and failed_result is None:
+                        failed_step = step
+                        failed_result = cleanup
+                        break
+                    if cleanup.returncode == 0:
+                        completed_steps.append(step)
     except subprocess.TimeoutExpired as exc:
         raise CommandError("TIMEOUT", "bench update command timed out", "Timed Out") from exc
 
