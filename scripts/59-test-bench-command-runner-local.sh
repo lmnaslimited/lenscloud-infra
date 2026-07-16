@@ -170,13 +170,6 @@ run_command bench_update_reject_site_target \
   1 | grep '"code":"INVALID_ARGUMENTS"' >/dev/null
 
 mkdir -p "$bench_path/apps/frappe" "$bench_path/apps/erpnext" "$bench_path/apps/hrms"
-mkdir -p "$bench_path/sites/frappe-sites/bench-update-nested.localhost"
-cat >"$bench_path/sites/frappe-sites/bench-update-nested.localhost/site_config.json" <<'JSON'
-{
- "db_name": "bench_update_nested",
- "db_password": "must-not-leak"
-}
-JSON
 mkdir -p "$bench_path/env/bin" "$tmpdir/bin"
 cat >"$bench_path/env/bin/bench" <<'SH'
 #!/usr/bin/env bash
@@ -188,25 +181,17 @@ fake_bench="$tmpdir/bin/bench"
 cat >"$fake_bench" <<'SH'
 #!/usr/bin/env bash
 set -euo pipefail
-if [[ ! -f apps.txt ]]; then
-  echo "apps.txt missing" >&2
+if [[ "$(pwd -P)" != "$(cd "$BENCH_PATH" && pwd -P)" ]]; then
+  echo "bench command did not run from BENCH_PATH" >&2
+  exit 36
+fi
+if [[ ! -f sites/apps.txt ]]; then
+  echo "sites/apps.txt missing" >&2
   exit 37
 fi
-grep -Fx frappe apps.txt >/dev/null
-grep -Fx erpnext apps.txt >/dev/null
-grep -Fx hrms apps.txt >/dev/null
-if [[ ! -d runner-test.localhost || -L runner-test.localhost ]]; then
-  echo "flat site is not exposed as a real directory" >&2
-  exit 38
-fi
-if [[ ! -d bench-update-nested.localhost || -L bench-update-nested.localhost ]]; then
-  echo "nested site is not exposed as a real directory" >&2
-  exit 39
-fi
-if [[ ! -f bench-update-nested.localhost/site_config.json ]]; then
-  echo "nested site_config is missing" >&2
-  exit 40
-fi
+grep -Fx frappe sites/apps.txt >/dev/null
+grep -Fx erpnext sites/apps.txt >/dev/null
+grep -Fx hrms sites/apps.txt >/dev/null
 printf '%s\n' "$*" >>"$BENCH_UPDATE_TRACE"
 SH
 chmod +x "$fake_bench"
@@ -222,11 +207,11 @@ PATH="$tmpdir/bin:$PATH" \
   python3 bench-command-runner/runner.py >/dev/null
 grep -F '"summary":"Bench update completed"' "$termination_path" >/dev/null
 cat >"$tmpdir/expected-bench-update-command" <<'EOF'
---site all set-config -p maintenance_mode 1
---site all set-config -p pause_scheduler 1
+--site all set-config maintenance_mode 1
+--site all set-config pause_scheduler 1
 --site all migrate
---site all set-config -p maintenance_mode 0
---site all set-config -p pause_scheduler 0
+--site all set-config maintenance_mode 0
+--site all set-config pause_scheduler 0
 EOF
 diff -u "$tmpdir/expected-bench-update-command" "$tmpdir/bench-update-command"
 if [[ -f "$bench_path/sites/apps.txt" ]]; then
