@@ -1,106 +1,188 @@
-# Release Group App Install And Bench Update Runner SOP
+# Release Group App Install And Bench Update Runtime-Image SOP
 
-Date: 2026-07-13
+Date: 2026-07-16
 Workitem: `INF-027`
 
-Use this SOP only after a new runner image is built and published from the
-current `bench-command-runner/` source.
+This SOP supersedes the earlier app-aware `lenscloud-bench-command-runner`
+model.
+
+For `site_bootstrap.install_apps`, `site_app.install`, and `bench.update`, run
+the Kubernetes Job inside the Release Group runtime image, not inside the
+generic runner image.
+
+The generic runner remains in use for existing non-app-aware Bench Commands.
 
 ## Preflight
 
 1. Confirm the target Runtime Namespace is approved and labelled for Platform.
-2. Confirm the admission policy allows the new runner digest and command
-   families `site_bootstrap`, `site_app`, and `bench`.
-3. Confirm the test Bench and Site are disposable or explicitly approved.
-4. Confirm `frappe` is not present in app install payloads.
-5. Confirm the base Frappe Site already exists before app install commands run.
+2. Confirm the admission policy is applied from
+   `manifests/access/lenscloud-platform-rbac.yaml`.
+3. Confirm the target Release Group runtime image is resolved to an immutable
+   digest:
 
-## Local Source Verification
+   ```text
+   ghcr.io/lmnaslimited/lensdocker/lens-pure@sha256:<64-hex-digest>
+   ```
+
+4. Confirm the test Bench and Site are disposable or explicitly approved.
+5. Confirm `frappe` is not present in app install payloads.
+6. Confirm the target app exists in the selected Release Group runtime image.
+7. Confirm the Job sites PVC mount mirrors the Bench pod mount/subPath exactly.
+
+## Local Verification
 
 Run:
 
-```sh
+```bash
+bash -n scripts/58-verify-platform-bench-command.sh
+python3 - <<'PY'
+from pathlib import Path
+text = Path("manifests/access/lenscloud-platform-rbac.yaml").read_text()
+assert "lensdocker/lens-pure@sha256" in text
+assert "lenscloud-bench-command-runner" in text
+assert "'site_bootstrap'," in text
+assert "'site_app'," in text
+assert "'bench'," in text
+PY
+```
+
+Expected: no output and exit code `0`.
+
+The generic runner source verifier may still be run to guard existing
+non-app-aware behavior:
+
+```bash
 python3 -m py_compile bench-command-runner/runner.py
 scripts/59-test-bench-command-runner-local.sh
 ```
 
+## Admission Verification
+
+On the manager VM:
+
+```bash
+export MANAGER_KUBECONFIG=/etc/rancher/k3s/k3s.yaml
+export PLATFORM_KUBECONFIG=/secure/path/to/platform.kubeconfig
+export RUNTIME_NAMESPACE=lenscloud-runtime-eu
+
+scripts/58-verify-platform-bench-command.sh
+```
+
 Expected:
+
+- `bench_test.status` still succeeds through the existing smoke exception.
+- A digest-pinned `lensdocker/lens-pure` image is admitted for `bench.update`.
+- The old generic runner image is denied for `bench.update`.
+- Unlabelled Jobs are denied.
+- Secret-volume Jobs are denied.
+- Platform still cannot list/read Secrets or read pod logs.
+
+## Live Positive Check: New Site App Install
+
+Use:
 
 ```text
-Bench command runner local verification passed.
+docs/testing/bench-command-runner/site_bootstrap_install_apps_template.yaml
 ```
 
-## Live Positive Checks
+Required substitutions:
 
-Run `site_bootstrap.install_apps` against a real test Site:
-
-```json
-{
-  "install_apps": [
-    {
-      "app": "erpnext",
-      "install_sequence": 20
-    },
-    {
-      "app": "hrms",
-      "install_sequence": 30
-    }
-  ]
-}
+```bash
+export TEST_NAME=rg-app-bootstrap-$(date -u +%Y%m%d%H%M%S)
+export RUNTIME_NAMESPACE=lenscloud-runtime-eu
+export RELEASE_GROUP_IMAGE='ghcr.io/lmnaslimited/lensdocker/lens-pure@sha256:<digest>'
+export REAL_SITE=<site-hostname>
+export REAL_SITES_PVC=<bench-sites-pvc>
 ```
+
+Before applying, edit the template so the `sites` mount/subPath matches the
+target Bench pod. If the Bench pod does not use `subPath: frappe-sites`, remove
+the `subPath` lines.
 
 Expected:
 
-- phase `Succeeded`;
-- `attempted_apps` preserves submitted order;
-- `installed_apps` names newly installed apps;
-- `skipped_apps` names already-installed apps;
-- `failed_app` is null;
+- phase/job `Complete`;
+- requested apps are installed in sorted `install_sequence` order;
+- retry is idempotent or safely reports already-installed apps;
 - no secrets are returned.
 
-Retry the same request. Expected:
+## Live Positive Check: Existing Site App Install
 
-- phase `Succeeded`;
-- already-installed apps are in `skipped_apps`;
-- command is idempotent.
+Use:
 
-Run `site_app.install` against an existing Ready/Active test Site:
-
-```json
-{
-  "apps": [
-    {
-      "app": "payments",
-      "install_sequence": 30
-    }
-  ]
-}
+```text
+docs/testing/bench-command-runner/site_app_install_template.yaml
 ```
 
-Expected: app installed or safely skipped.
+Required substitutions:
 
-Run `bench.update` against a test Bench after Platform-side gates are satisfied:
+```bash
+export TEST_NAME=site-app-install-$(date -u +%Y%m%d%H%M%S)
+export RUNTIME_NAMESPACE=lenscloud-runtime-eu
+export RELEASE_GROUP_IMAGE='ghcr.io/lmnaslimited/lensdocker/lens-pure@sha256:<digest>'
+export REAL_SITE=<site-hostname>
+export REAL_SITES_PVC=<bench-sites-pvc>
+export INSTALL_APP=<release-group-app>
+```
 
-```json
-{
-  "target_release": "v16.14.2"
-}
+Before applying, edit the template so the `sites` mount/subPath matches the
+target Bench pod.
+
+The template renders the existing-Site command shape:
+
+```bash
+bench --site "$REAL_SITE" install-app "$INSTALL_APP"
+```
+
+Expected: app installed or safely skipped when already present.
+
+## Live Positive Check: Bench Update
+
+Use:
+
+```text
+docs/testing/bench-command-runner/bench_update_runtime_image_template.yaml
+```
+
+Required substitutions:
+
+```bash
+export TEST_NAME=bench-update-$(date -u +%Y%m%d%H%M%S)
+export RUNTIME_NAMESPACE=lenscloud-runtime-eu
+export RELEASE_GROUP_IMAGE='ghcr.io/lmnaslimited/lensdocker/lens-pure@sha256:<next-release-digest>'
+export REAL_SITES_PVC=<bench-sites-pvc>
+```
+
+Before applying, edit the template so the `sites` mount/subPath matches the
+target Bench pod.
+
+Expected command sequence:
+
+```bash
+bench --site all set-config -p maintenance_mode 1
+bench --site all set-config -p pause_scheduler 1
+bench --site all migrate
+bench --site all set-config -p maintenance_mode 0
+bench --site all set-config -p pause_scheduler 0
 ```
 
 Expected:
 
-- target has Bench only, no Site;
-- phase `Succeeded`;
-- operation reports `bench --site all migrate`;
-- target Release is echoed safely.
+- target is Bench only, no Site;
+- Job reaches `Complete`;
+- `bench --site all migrate` runs from the `next_release` runtime image;
+- maintenance mode and scheduler pause are returned to `0`.
 
 ## Negative Checks
 
 Verify rejection or denial for:
 
+- mutable `lens-pure:<tag>` image in app-aware Job;
+- old `lenscloud-bench-command-runner` image in app-aware Job;
 - app payload containing `frappe`;
 - invalid app identifier;
 - duplicate app in one payload;
+- app outside the Bench Release Group;
 - `bench.update` target containing a Site;
 - wrong namespace;
 - wrong Bench;
@@ -116,10 +198,10 @@ Verify rejection or denial for:
 After each live command, prove absence or deletion of:
 
 - command Job;
-- request ConfigMap;
+- request ConfigMap, if one was created;
 - terminal Platform-labelled command Pod;
 - temporary Secret, if any;
-- runner artifacts.
+- test Bench/Site resources when disposable.
 
 Do not read pod logs, Secret values, kubeconfig material, raw `site_config.json`,
 passwords, private keys, or environment dumps for evidence.

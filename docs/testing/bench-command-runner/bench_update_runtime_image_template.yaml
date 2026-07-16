@@ -7,8 +7,8 @@ metadata:
     lenscloud.io/managed-by: platform
     lenscloud.io/resource-kind: bench-command
   annotations:
-    lenscloud.io/bench-command-family: site_bootstrap
-    lenscloud.io/bench-command: site_bootstrap.install_apps
+    lenscloud.io/bench-command-family: bench
+    lenscloud.io/bench-command: bench.update
 spec:
   backoffLimit: 0
   template:
@@ -17,13 +17,13 @@ spec:
         lenscloud.io/managed-by: platform
         lenscloud.io/resource-kind: bench-command
       annotations:
-        lenscloud.io/bench-command-family: site_bootstrap
-        lenscloud.io/bench-command: site_bootstrap.install_apps
+        lenscloud.io/bench-command-family: bench
+        lenscloud.io/bench-command: bench.update
     spec:
       restartPolicy: Never
       automountServiceAccountToken: false
       containers:
-        - name: site-bootstrap-install-apps
+        - name: bench-update
           image: $RELEASE_GROUP_IMAGE
           securityContext:
             privileged: false
@@ -31,8 +31,11 @@ spec:
           args:
             - |
               set -euo pipefail
-              bench --site "$REAL_SITE" install-app erpnext
-              bench --site "$REAL_SITE" install-app hrms
+              bench --site all set-config -p maintenance_mode 1
+              bench --site all set-config -p pause_scheduler 1
+              bench --site all migrate
+              bench --site all set-config -p maintenance_mode 0
+              bench --site all set-config -p pause_scheduler 0
           volumeMounts:
             - name: sites
               mountPath: /home/frappe/frappe-bench/sites

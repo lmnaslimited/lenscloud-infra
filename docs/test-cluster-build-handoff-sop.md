@@ -870,15 +870,23 @@ The target redirect URL is derived from the target Site access URL:
 https://<target-site>/api/method/frappe.integrations.oauth2_logins.custom/<oauth_provider_key>
 ```
 
-### Bench Command Runner Digest Enablement
+### Bench Command Execution Image Enablement
 
-Infra owns enabling the Bench Command runner image on the cluster. Platform
-cannot use a newly published runner digest until Infra has both updated the
-repo admission manifest and applied that manifest to the live cluster.
+Infra owns enabling the Bench Command execution images on the cluster.
+There are two execution paths:
 
-Do this during first-time restricted Platform access setup and repeat it every
-time a new `ghcr.io/lmnaslimited/lenscloud-bench-command-runner` digest is
-published:
+| Command families | Execution image |
+| --- | --- |
+| Existing non-app-aware families such as maintenance mode, developer mode, site config, CORS, site setup, OAuth, backup/restore status-style commands, LATP | `ghcr.io/lmnaslimited/lenscloud-bench-command-runner@sha256:<digest>` |
+| App-aware families `site_bootstrap`, `site_app`, and `bench` / `bench.update` | Release Group runtime image, for example `ghcr.io/lmnaslimited/lensdocker/lens-pure@sha256:<digest>` |
+
+The app-aware path must use the Release Group runtime image because those
+commands need the same app inventory as the target Bench. This mirrors the
+existing Swarm `migration` service, where the one-shot migration container uses
+the stack image.
+
+For the generic runner path, repeat this whenever a new
+`ghcr.io/lmnaslimited/lenscloud-bench-command-runner` digest is published:
 
 1. Verify the published tag resolves to the expected immutable digest:
 
@@ -908,12 +916,49 @@ published:
      lenscloud-platform-bench-command-job-create -o yaml
    ```
 
-5. Only after the live policy contains the new digest, run the relevant live
-   verifier script and record the evidence and cleanup proof.
+5. Only after the live policy contains the new digest, run the relevant
+   non-app-aware live verifier script and record the evidence and cleanup
+   proof.
 
 Repo pinning alone is not enough. If the live admission policy still contains
 the previous digest, Platform-created Bench Command Jobs will be denied before
 the runner starts.
+
+For the app-aware Release Group runtime-image path:
+
+1. Resolve the Release Group runtime tag to an immutable digest:
+
+   ```bash
+   docker buildx imagetools inspect \
+     ghcr.io/lmnaslimited/lensdocker/lens-pure:<release-tag>
+   ```
+
+2. Platform must use the digest form in Jobs:
+
+   ```text
+   ghcr.io/lmnaslimited/lensdocker/lens-pure@sha256:<64-hex-digest>
+   ```
+
+3. Confirm admission rejects mutable tags and accepts digest-pinned
+   `lensdocker/lens-pure` runtime images for `site_bootstrap`, `site_app`, and
+   `bench` Jobs:
+
+   ```bash
+   scripts/58-verify-platform-bench-command.sh
+   ```
+
+4. For app-aware test Jobs, mirror the target Bench pod's sites PVC mount and
+   subPath exactly. If the Bench pod uses `subPath: frappe-sites`, the Job must
+   use the same subPath. If the Bench pod mounts the PVC root directly, the Job
+   must mount the root directly.
+
+Use these templates for manual live checks:
+
+```text
+docs/testing/bench-command-runner/site_bootstrap_install_apps_template.yaml
+docs/testing/bench-command-runner/site_app_install_template.yaml
+docs/testing/bench-command-runner/bench_update_runtime_image_template.yaml
+```
 
 For `INF-026`, publish and admission-pin a runner image that includes the
 local-dev OAuth issuer contract, then run the OAuth verifier against a real

@@ -388,7 +388,22 @@ spec:
             )))
         && object.spec.template.spec.containers.all(container,
           (
-            container.image == 'ghcr.io/lmnaslimited/lenscloud-bench-command-runner@sha256:0ba81c0f4031d452eab71a463a562d5f07ace308ae87967725dd807e00c97570'
+            (
+              object.metadata.annotations['lenscloud.io/bench-command-family'] in [
+                'site_bootstrap',
+                'site_app',
+                'bench'
+              ]
+              && container.image.matches('^ghcr\\.io/lmnaslimited/lensdocker/lens-pure@sha256:[0-9a-f]{64}$')
+            )
+            || (
+              !(object.metadata.annotations['lenscloud.io/bench-command-family'] in [
+                'site_bootstrap',
+                'site_app',
+                'bench'
+              ])
+              && container.image == 'ghcr.io/lmnaslimited/lenscloud-bench-command-runner@sha256:0ba81c0f4031d452eab71a463a562d5f07ace308ae87967725dd807e00c97570'
+            )
             || (
               object.metadata.annotations['lenscloud.io/bench-command-family'] == 'bench_test'
               && 'lenscloud.io/bench-command' in object.metadata.annotations
@@ -412,10 +427,12 @@ spec:
               || container.securityContext.privileged == false))))
       message: >-
         LensCloud Platform may create only labelled bench-command Jobs with an
-        approved command family, approved runner image, one non-privileged
+        approved command family, approved execution image, one non-privileged
         container, no envFrom, no service-account token, restartPolicy Never,
         backoffLimit <= 1, and no Secret volumes except the approved
-        oauth-client-secret/client_secret mount for oauth commands.
+        oauth-client-secret/client_secret mount for oauth commands. App-aware
+        families site_bootstrap, site_app, and bench must use a digest-pinned
+        lensdocker/lens-pure Release Group runtime image.
 ---
 apiVersion: admissionregistration.k8s.io/v1
 kind: ValidatingAdmissionPolicyBinding

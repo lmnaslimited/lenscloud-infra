@@ -129,6 +129,115 @@ if [[ "$termination_message" != *'"sanitized":true'* ]]; then
   exit 1
 fi
 
+if ! cat <<EOF | "${platform[@]}" apply --dry-run=server -f - >/dev/null
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: ${TEST_PREFIX}-runtime-image-positive
+  namespace: ${RUNTIME_NAMESPACE}
+  labels:
+    lenscloud.io/managed-by: platform
+    lenscloud.io/resource-kind: bench-command
+    lenscloud.io/resource-id: ${TEST_PREFIX}
+  annotations:
+    lenscloud.io/bench-command-family: bench
+    lenscloud.io/bench-command: bench.update
+spec:
+  backoffLimit: 0
+  template:
+    metadata:
+      labels:
+        lenscloud.io/managed-by: platform
+        lenscloud.io/resource-kind: bench-command
+        lenscloud.io/resource-id: ${TEST_PREFIX}
+    spec:
+      automountServiceAccountToken: false
+      restartPolicy: Never
+      containers:
+        - name: migration
+          image: ghcr.io/lmnaslimited/lensdocker/lens-pure@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+          securityContext:
+            privileged: false
+          command: ["bash", "-lc"]
+          args: ["true"]
+EOF
+then
+  echo "Digest-pinned Release Group runtime image was not admitted for bench.update." >&2
+  exit 1
+fi
+
+if cat <<EOF | "${platform[@]}" apply --dry-run=server -f - >/dev/null 2>&1
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: ${TEST_PREFIX}-app-aware-runner-negative
+  namespace: ${RUNTIME_NAMESPACE}
+  labels:
+    lenscloud.io/managed-by: platform
+    lenscloud.io/resource-kind: bench-command
+    lenscloud.io/resource-id: ${TEST_PREFIX}
+  annotations:
+    lenscloud.io/bench-command-family: bench
+    lenscloud.io/bench-command: bench.update
+spec:
+  backoffLimit: 0
+  template:
+    metadata:
+      labels:
+        lenscloud.io/managed-by: platform
+        lenscloud.io/resource-kind: bench-command
+        lenscloud.io/resource-id: ${TEST_PREFIX}
+    spec:
+      automountServiceAccountToken: false
+      restartPolicy: Never
+      containers:
+        - name: old-runner
+          image: ghcr.io/lmnaslimited/lenscloud-bench-command-runner@sha256:0ba81c0f4031d452eab71a463a562d5f07ace308ae87967725dd807e00c97570
+          securityContext:
+            privileged: false
+          command: ["true"]
+EOF
+then
+  echo "App-aware bench command using the old runner image unexpectedly passed admission." >&2
+  exit 1
+fi
+
+if cat <<EOF | "${platform[@]}" apply --dry-run=server -f - >/dev/null 2>&1
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: ${TEST_PREFIX}-mutable-runtime-image-negative
+  namespace: ${RUNTIME_NAMESPACE}
+  labels:
+    lenscloud.io/managed-by: platform
+    lenscloud.io/resource-kind: bench-command
+    lenscloud.io/resource-id: ${TEST_PREFIX}
+  annotations:
+    lenscloud.io/bench-command-family: bench
+    lenscloud.io/bench-command: bench.update
+spec:
+  backoffLimit: 0
+  template:
+    metadata:
+      labels:
+        lenscloud.io/managed-by: platform
+        lenscloud.io/resource-kind: bench-command
+        lenscloud.io/resource-id: ${TEST_PREFIX}
+    spec:
+      automountServiceAccountToken: false
+      restartPolicy: Never
+      containers:
+        - name: mutable-runtime-image
+          image: ghcr.io/lmnaslimited/lensdocker/lens-pure:v16.14.3
+          securityContext:
+            privileged: false
+          command: ["true"]
+EOF
+then
+  echo "Mutable Release Group runtime tag unexpectedly passed admission." >&2
+  exit 1
+fi
+
 if cat <<EOF | "${platform[@]}" apply -f - >/dev/null 2>&1
 apiVersion: batch/v1
 kind: Job
@@ -197,6 +306,9 @@ echo "Bench Command Job/API RBAC verification passed."
 echo "Runtime namespace: ${RUNTIME_NAMESPACE}"
 echo "Positive command family: bench_test"
 echo "Sanitized result summary: present"
+echo "Digest-pinned Release Group runtime image for app-aware bench commands: admitted"
+echo "Old runner image for app-aware bench commands: denied"
+echo "Mutable Release Group runtime tag for app-aware bench commands: denied"
 echo "Negative unlabelled Job: denied"
 echo "Negative Secret volume Job: denied"
 echo "Secret listing and pod log read: denied"
