@@ -106,7 +106,7 @@ BENCH_PATH = getenv_path("BENCH_PATH", "/home/frappe/frappe-bench")
 SITES_PATH = getenv_path("BENCH_SITES_PATH", str(BENCH_PATH / "sites"))
 TERMINATION_PATH = Path(os.environ.get("BENCH_COMMAND_TERMINATION_LOG", "/dev/termination-log"))
 BENCH_PYTHON = Path(os.environ.get("BENCH_PYTHON", str(BENCH_PATH / "env" / "bin" / "python")))
-BENCH_EXECUTABLE = Path(os.environ.get("BENCH_EXECUTABLE", str(BENCH_PATH / "env" / "bin" / "bench")))
+BENCH_EXECUTABLE = os.environ.get("BENCH_EXECUTABLE", "").strip()
 FAKE_FRAPPE_SETUP = os.environ.get("LENS_COMMAND_FAKE_FRAPPE_SETUP") == "1"
 MAX_SETUP_ARGS_BYTES = int(os.environ.get("LENS_COMMAND_MAX_SETUP_ARGS_BYTES", "16384"))
 OAUTH_CLIENT_SECRET_PATH = Path(
@@ -1080,11 +1080,17 @@ def command_site_app_install(command: str, target: dict[str, Any], args: dict[st
 
 
 def bench_executable() -> list[str]:
-    if BENCH_EXECUTABLE.is_file():
-        return [str(BENCH_EXECUTABLE)]
+    if BENCH_EXECUTABLE:
+        configured = Path(BENCH_EXECUTABLE)
+        if configured.is_file():
+            return [str(configured)]
+        raise CommandError("RUNNER_FAILED", "configured bench executable was not found")
     discovered = shutil.which("bench")
     if discovered:
         return [discovered]
+    bench_env_executable = BENCH_PATH / "env" / "bin" / "bench"
+    if bench_env_executable.is_file():
+        return [str(bench_env_executable)]
     if BENCH_PYTHON.is_file():
         return [str(BENCH_PYTHON), "-m", "bench.cli"]
     raise CommandError("RUNNER_FAILED", "bench executable was not found")
@@ -1098,7 +1104,7 @@ def run_bench_update(target_release: str, timeout: int) -> dict[str, Any]:
         state.update(
             {
                 "target_release": target_release,
-                "last_command": "bench --site all migrate",
+                "last_command": "bench --site all set-config/migrate sequence",
                 "exit_code": 0,
             }
         )
@@ -1107,31 +1113,69 @@ def run_bench_update(target_release: str, timeout: int) -> dict[str, Any]:
             "target_release": target_release,
             "changed": changed,
             "exit_code": 0,
-            "operation": "bench --site all migrate",
+            "operation": "bench --site all maintenance/pause/migrate",
         }
 
-    command = bench_executable() + ["--site", "all", "migrate"]
+    executable = bench_executable()
+    steps = [
+        ("maintenance_on", ["--site", "all", "set-config", "-p", "maintenance_mode", "1"]),
+        ("scheduler_pause", ["--site", "all", "set-config", "-p", "pause_scheduler", "1"]),
+        ("migrate", ["--site", "all", "migrate"]),
+    ]
+    cleanup_steps = [
+        ("maintenance_off", ["--site", "all", "set-config", "-p", "maintenance_mode", "0"]),
+        ("scheduler_resume", ["--site", "all", "set-config", "-p", "pause_scheduler", "0"]),
+    ]
+    failed_step = None
+    failed_result: subprocess.CompletedProcess[str] | None = None
+    completed_steps: list[str] = []
     try:
         with prepared_bench_apps_txt():
-            completed = subprocess.run(
-                command,
-                text=True,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                cwd=str(BENCH_PATH),
-                env=dict(os.environ),
-                timeout=timeout,
-                check=False,
-            )
+            for step, args in steps:
+                completed = subprocess.run(
+                    executable + args,
+                    text=True,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    cwd=str(BENCH_PATH),
+                    env=dict(os.environ),
+                    timeout=timeout,
+                    check=False,
+                )
+                if completed.returncode != 0:
+                    failed_step = step
+                    failed_result = completed
+                    break
+                completed_steps.append(step)
+            for step, args in cleanup_steps:
+                cleanup = subprocess.run(
+                    executable + args,
+                    text=True,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    cwd=str(BENCH_PATH),
+                    env=dict(os.environ),
+                    timeout=timeout,
+                    check=False,
+                )
+                if cleanup.returncode != 0 and failed_result is None:
+                    failed_step = step
+                    failed_result = cleanup
+                    break
+                if cleanup.returncode == 0:
+                    completed_steps.append(step)
     except subprocess.TimeoutExpired as exc:
         raise CommandError("TIMEOUT", "bench update command timed out", "Timed Out") from exc
 
+    exit_code = failed_result.returncode if failed_result else 0
     return {
         "target_release": target_release,
-        "changed": completed.returncode == 0,
-        "exit_code": completed.returncode,
-        "operation": "bench --site all migrate",
-        "error_excerpt": sanitize((completed.stderr or completed.stdout or "")[-500:]) if completed.returncode else None,
+        "changed": exit_code == 0,
+        "exit_code": exit_code,
+        "operation": "bench --site all maintenance/pause/migrate",
+        "completed_steps": completed_steps,
+        "failed_step": failed_step,
+        "error_excerpt": sanitize((failed_result.stderr or failed_result.stdout or "")[-500:]) if failed_result else None,
     }
 
 
@@ -1151,6 +1195,8 @@ def command_bench_update(command: str, target: dict[str, Any], args: dict[str, A
             "target_release": target_release,
             "operation": state.get("operation"),
             "exit_code": exit_code,
+            "completed_steps": state.get("completed_steps"),
+            "failed_step": state.get("failed_step"),
             "error_excerpt": state.get("error_excerpt"),
         },
         display={

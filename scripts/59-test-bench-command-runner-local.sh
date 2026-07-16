@@ -170,7 +170,14 @@ run_command bench_update_reject_site_target \
   1 | grep '"code":"INVALID_ARGUMENTS"' >/dev/null
 
 mkdir -p "$bench_path/apps/frappe" "$bench_path/apps/erpnext" "$bench_path/apps/hrms"
-fake_bench="$tmpdir/fake-bench"
+mkdir -p "$bench_path/env/bin" "$tmpdir/bin"
+cat >"$bench_path/env/bin/bench" <<'SH'
+#!/usr/bin/env bash
+echo "wrong bench executable selected" >&2
+exit 42
+SH
+chmod +x "$bench_path/env/bin/bench"
+fake_bench="$tmpdir/bin/bench"
 cat >"$fake_bench" <<'SH'
 #!/usr/bin/env bash
 set -euo pipefail
@@ -181,7 +188,7 @@ fi
 grep -Fx frappe sites/apps.txt >/dev/null
 grep -Fx erpnext sites/apps.txt >/dev/null
 grep -Fx hrms sites/apps.txt >/dev/null
-printf '%s\n' "$*" >sites/.bench-update-command
+printf '%s\n' "$*" >>sites/.bench-update-command
 SH
 chmod +x "$fake_bench"
 
@@ -189,12 +196,19 @@ request_path="$tmpdir/request/bench_update_prepares_apps_txt.json"
 termination_path="$tmpdir/request/bench_update_prepares_apps_txt.termination.json"
 printf '%s\n' "{\"apiVersion\":\"lenscloud.io/v1\",\"kind\":\"BenchCommand\",\"commandId\":\"local-13g\",\"command\":\"bench.update\",${bench_target},\"args\":{\"target_release\":\"v16.14.3\"},\"timeoutSeconds\":60}" >"$request_path"
 BENCH_PATH="$bench_path" \
-BENCH_EXECUTABLE="$fake_bench" \
 BENCH_COMMAND_REQUEST="$request_path" \
 BENCH_COMMAND_TERMINATION_LOG="$termination_path" \
+PATH="$tmpdir/bin:$PATH" \
   python3 bench-command-runner/runner.py >/dev/null
 grep -F '"summary":"Bench update completed"' "$termination_path" >/dev/null
-grep -F -- '--site all migrate' "$bench_path/sites/.bench-update-command" >/dev/null
+cat >"$tmpdir/expected-bench-update-command" <<'EOF'
+--site all set-config -p maintenance_mode 1
+--site all set-config -p pause_scheduler 1
+--site all migrate
+--site all set-config -p maintenance_mode 0
+--site all set-config -p pause_scheduler 0
+EOF
+diff -u "$tmpdir/expected-bench-update-command" "$bench_path/sites/.bench-update-command"
 if [[ -f "$bench_path/sites/apps.txt" ]]; then
   echo "bench.update left behind generated sites/apps.txt" >&2
   cat "$bench_path/sites/apps.txt" >&2
