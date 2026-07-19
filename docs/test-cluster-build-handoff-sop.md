@@ -900,13 +900,15 @@ There are two execution paths:
 
 | Command families | Execution image |
 | --- | --- |
-| Existing non-app-aware families such as maintenance mode, developer mode, site config, CORS, site setup, OAuth, backup/restore status-style commands, LATP | `ghcr.io/lmnaslimited/lenscloud-bench-command-runner@sha256:<digest>` |
-| App-aware families `site_bootstrap`, `site_app`, and `bench` / `bench.update` | Release Group runtime image, for example `ghcr.io/lmnaslimited/lensdocker/lens-pure@sha256:<digest>` |
+| Existing non-app-aware families such as maintenance mode, developer mode, site config, CORS, `site_setup.status`, OAuth, backup/restore status-style commands, LATP | `ghcr.io/lmnaslimited/lenscloud-bench-command-runner@sha256:<digest>` |
+| App-aware commands `site_bootstrap.*`, `site_app.*`, `bench.*`, and `site_setup.complete` | Release Group runtime image, for example `ghcr.io/lmnaslimited/lensdocker/lens-pure@sha256:<digest>` |
 
 The app-aware path must use the Release Group runtime image because those
 commands need the same app inventory as the target Bench. This mirrors the
 existing Swarm `migration` service, where the one-shot migration container uses
-the stack image.
+the stack image. `site_setup.complete` is included because Frappe setup
+completion can execute installed-app setup hooks such as Release Group apps.
+`site_setup.status` remains generic because it is a read/status command.
 
 For the generic runner path, repeat this whenever a new
 `ghcr.io/lmnaslimited/lenscloud-bench-command-runner` digest is published:
@@ -1017,8 +1019,8 @@ For the app-aware Release Group runtime-image path:
    ```
 
 3. Confirm admission rejects mutable tags and accepts digest-pinned
-   `lensdocker/lens-pure` runtime images for `site_bootstrap`, `site_app`, and
-   `bench` Jobs:
+   `lensdocker/lens-pure` runtime images for `site_bootstrap`, `site_app`,
+   `bench`, and `site_setup.complete` Jobs:
 
    ```bash
    scripts/58-verify-platform-bench-command.sh
@@ -1030,6 +1032,9 @@ For the app-aware Release Group runtime-image path:
      `lenscloud-platform-system/lenscloud-platform-cluster-contract`;
    - the configured `bench_command_runner_image` is digest-pinned;
    - the configured runner image is admitted for `site_setup.status`;
+   - digest-pinned Release runtime image is admitted for
+     `site_setup.complete`;
+   - the generic runner image is denied for `site_setup.complete`;
    - a stale runner digest is denied with the admission message containing
      `approved execution image`.
 

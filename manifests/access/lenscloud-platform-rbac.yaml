@@ -433,19 +433,33 @@ spec:
         && object.spec.template.spec.containers.all(container,
           (
             (
-              object.metadata.annotations['lenscloud.io/bench-command-family'] in [
-                'site_bootstrap',
-                'site_app',
-                'bench'
-              ]
+              (
+                object.metadata.annotations['lenscloud.io/bench-command-family'] in [
+                  'site_bootstrap',
+                  'site_app',
+                  'bench'
+                ]
+                || (
+                  object.metadata.annotations['lenscloud.io/bench-command-family'] == 'site_setup'
+                  && 'lenscloud.io/bench-command' in object.metadata.annotations
+                  && object.metadata.annotations['lenscloud.io/bench-command'] == 'site_setup.complete'
+                )
+              )
               && container.image.matches('^ghcr\\.io/lmnaslimited/lensdocker/lens-pure@sha256:[0-9a-f]{64}$')
             )
             || (
-              !(object.metadata.annotations['lenscloud.io/bench-command-family'] in [
-                'site_bootstrap',
-                'site_app',
-                'bench'
-              ])
+              !(
+                object.metadata.annotations['lenscloud.io/bench-command-family'] in [
+                  'site_bootstrap',
+                  'site_app',
+                  'bench'
+                ]
+                || (
+                  object.metadata.annotations['lenscloud.io/bench-command-family'] == 'site_setup'
+                  && 'lenscloud.io/bench-command' in object.metadata.annotations
+                  && object.metadata.annotations['lenscloud.io/bench-command'] == 'site_setup.complete'
+                )
+              )
               && container.image == 'ghcr.io/lmnaslimited/lenscloud-bench-command-runner@sha256:0ba81c0f4031d452eab71a463a562d5f07ace308ae87967725dd807e00c97570'
             )
             || (
@@ -475,8 +489,9 @@ spec:
         container, no envFrom, no service-account token, restartPolicy Never,
         backoffLimit <= 1, and no Secret volumes except the approved
         oauth-client-secret/client_secret mount for oauth commands. App-aware
-        families site_bootstrap, site_app, and bench must use a digest-pinned
-        lensdocker/lens-pure Release Group runtime image.
+        commands site_bootstrap.*, site_app.*, bench.*, and
+        site_setup.complete must use a digest-pinned lensdocker/lens-pure
+        Release Group runtime image.
 ---
 apiVersion: admissionregistration.k8s.io/v1
 kind: ValidatingAdmissionPolicyBinding

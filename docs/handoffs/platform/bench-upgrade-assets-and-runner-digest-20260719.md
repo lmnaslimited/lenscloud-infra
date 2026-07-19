@@ -179,7 +179,6 @@ Use the generic runner digest only for non-app-aware command families, including
 
 ```text
 site_setup.status
-site_setup.complete
 oauth.status
 oauth.configure
 maintenance_mode.*
@@ -196,6 +195,7 @@ Use the digest-pinned Release Group runtime image for app-aware commands:
 site_bootstrap.install_apps
 site_app.install
 bench.update
+site_setup.complete
 ```
 
 Required shape:
@@ -204,8 +204,9 @@ Required shape:
 ghcr.io/lmnaslimited/lensdocker/lens-pure@sha256:<release-digest>
 ```
 
-Do not use the generic runner for app-aware commands. Do not use mutable
-runtime tags in Platform-created app-aware command Jobs.
+Do not use the generic runner for app-aware commands. `site_setup.complete` is
+app-aware because Frappe setup completion can execute installed-app setup hooks.
+Do not use mutable runtime tags in Platform-created app-aware command Jobs.
 
 ## Infra Applied
 

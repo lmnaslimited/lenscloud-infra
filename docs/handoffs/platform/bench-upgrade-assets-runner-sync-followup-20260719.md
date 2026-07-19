@@ -223,10 +223,10 @@ Platform can now proceed with:
 3. Retry/continue customer provisioning for
    `brandkite2e0717.cloud.lmnaslens.com`.
 4. Confirm generic command families use the synced runner digest:
-   `site_setup.status`, `site_setup.complete`, `oauth.status`,
-   `oauth.configure`.
+   `site_setup.status`, `oauth.status`, `oauth.configure`.
 5. Confirm app-aware command families continue using Release runtime digests:
-   `site_bootstrap.install_apps`, `site_app.install`, `bench.update`.
+   `site_bootstrap.install_apps`, `site_app.install`, `bench.update`,
+   `site_setup.complete`.
 6. Verify fresh HTML-generated CSS and JS URLs return HTTP 200.
 
 ## SOP Update

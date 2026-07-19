@@ -280,6 +280,79 @@ then
   exit 1
 fi
 
+if ! cat <<EOF | "${platform[@]}" apply --dry-run=server -f - >/dev/null
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: ${TEST_PREFIX}-setup-complete-runtime-ok
+  namespace: ${RUNTIME_NAMESPACE}
+  labels:
+    lenscloud.io/managed-by: platform
+    lenscloud.io/resource-kind: bench-command
+    lenscloud.io/resource-id: ${TEST_PREFIX}
+  annotations:
+    lenscloud.io/bench-command-family: site_setup
+    lenscloud.io/bench-command: site_setup.complete
+spec:
+  backoffLimit: 0
+  template:
+    metadata:
+      labels:
+        lenscloud.io/managed-by: platform
+        lenscloud.io/resource-kind: bench-command
+        lenscloud.io/resource-id: ${TEST_PREFIX}
+    spec:
+      automountServiceAccountToken: false
+      restartPolicy: Never
+      containers:
+        - name: site-setup-complete
+          image: ghcr.io/lmnaslimited/lensdocker/lens-pure@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+          securityContext:
+            privileged: false
+          command: ["bash", "-lc"]
+          args: ["true"]
+EOF
+then
+  echo "Digest-pinned Release Group runtime image was not admitted for site_setup.complete." >&2
+  exit 1
+fi
+
+if cat <<EOF | "${platform[@]}" apply --dry-run=server -f - >/dev/null 2>&1
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: ${TEST_PREFIX}-setup-complete-runner-no
+  namespace: ${RUNTIME_NAMESPACE}
+  labels:
+    lenscloud.io/managed-by: platform
+    lenscloud.io/resource-kind: bench-command
+    lenscloud.io/resource-id: ${TEST_PREFIX}
+  annotations:
+    lenscloud.io/bench-command-family: site_setup
+    lenscloud.io/bench-command: site_setup.complete
+spec:
+  backoffLimit: 0
+  template:
+    metadata:
+      labels:
+        lenscloud.io/managed-by: platform
+        lenscloud.io/resource-kind: bench-command
+        lenscloud.io/resource-id: ${TEST_PREFIX}
+    spec:
+      automountServiceAccountToken: false
+      restartPolicy: Never
+      containers:
+        - name: site-setup-complete
+          image: ${accepted_runner_image}
+          securityContext:
+            privileged: false
+          command: ["true"]
+EOF
+then
+  echo "Generic runner image unexpectedly passed admission for site_setup.complete." >&2
+  exit 1
+fi
+
 if cat <<EOF | "${platform[@]}" apply --dry-run=server -f - >/dev/null 2>&1
 apiVersion: batch/v1
 kind: Job
@@ -427,6 +500,8 @@ echo "Sanitized result summary: present"
 echo "Accepted Bench Command runner image for site_setup.status: admitted"
 echo "Stale Bench Command runner image for site_setup.status: denied"
 echo "Digest-pinned Release Group runtime image for app-aware bench commands: admitted"
+echo "Digest-pinned Release Group runtime image for site_setup.complete: admitted"
+echo "Generic runner image for site_setup.complete: denied"
 echo "Old runner image for app-aware bench commands: denied"
 echo "Mutable Release Group runtime tag for app-aware bench commands: denied"
 echo "Negative unlabelled Job: denied"

@@ -561,7 +561,7 @@ Planned CUA command families:
 
 | Family | Commands | Current status | Gate |
 | --- | --- | --- | --- |
-| `site_setup` | `site_setup.status`, `site_setup.complete` | Supported / live-verified | Uses native Frappe setup APIs; see `INF-021` evidence |
+| `site_setup` | `site_setup.status`, `site_setup.complete` | Supported / live-verified | `site_setup.status` uses the generic runner; `site_setup.complete` must use the Release runtime image because setup can execute installed-app hooks |
 | `oauth` | `oauth.status`, `oauth.configure` | Supported / live-verified | `INF-022`; Platform owns OAuth Client, Infra runner owns target Site Social Login Key |
 | `user` | `user.ensure`, `user.disable`, `user.roles.set` | Unsupported / blocked | `INF-023`; wait for OAuth live verification, then use standard Frappe APIs first |
 | `site_access` | `site_access.status` | Unsupported / blocked | `INF-023`; wait for OAuth live verification, then use standard Frappe APIs first |
@@ -572,6 +572,13 @@ The setup wizard commands should use native Frappe v16 APIs:
 frappe.is_setup_complete
 frappe.client_cache.get_doc("Installed Applications")
 frappe.desk.page.setup_wizard.setup_wizard.setup_complete
+```
+
+Execution image split:
+
+```text
+site_setup.status    -> generic Bench Command runner digest
+site_setup.complete  -> digest-pinned Release Group runtime image
 ```
 
 OAuth setup uses the target Site's standard Frappe `Social Login Key` DocType.

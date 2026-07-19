@@ -65,11 +65,15 @@ brandkite2e0717_js=/assets/erpnext/dist/js/bank-reconciliation-tool.bundle.3OD5X
 
 Status: Resolved live; Platform sync/retest pending.
 
-Platform-generated `site_setup.complete` Jobs use the generic Bench Command
+Platform-generated generic setup/status Jobs use the generic Bench Command
 runner image. Admission requires an exact digest-pinned runner image, but
-Platform currently has no cluster-readable source of truth for the accepted
-digest and cannot distinguish a stale digest from other admission-policy
+Platform previously had no cluster-readable source of truth for the accepted
+digest and could not distinguish a stale digest from other admission-policy
 denials without parsing the raw Kubernetes error.
+
+2026-07-19 follow-up: `site_setup.complete` is no longer generic-runner
+eligible for Release Group Sites. It must use the digest-pinned Release runtime
+image because setup completion can execute installed-app hooks.
 
 Infra added the cluster contract ConfigMap readable by the Platform service
 account and verifier coverage for admitted and stale runner digests.

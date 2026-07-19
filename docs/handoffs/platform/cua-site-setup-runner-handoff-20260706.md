@@ -9,8 +9,13 @@
 Complete. Source implemented, runner image published, admission pin applied,
 and live verification passed against a real Platform-managed Bench/Site.
 
-Platform may integrate `site_setup.status` and `site_setup.complete` through
-the existing Bench Command Job/API path.
+2026-07-19 update: `site_setup.status` remains on the synced generic runner,
+but `site_setup.complete` must use the digest-pinned Release Group runtime
+image because setup completion can execute installed-app setup hooks. This
+supersedes the original all-setup-commands-through-generic-runner wording.
+
+Platform may integrate `site_setup.status` through the existing Bench Command
+Job/API path.
 
 Setup live verification used this runner:
 

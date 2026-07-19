@@ -33,8 +33,10 @@ copies `/home/frappe/assets_cache/.` into the shared
    ```
 
    This value is the canonical generic runner image for non-app-aware
-   commands such as `site_setup.status`, `site_setup.complete`,
-   `oauth.status`, and `oauth.configure`.
+   commands such as `site_setup.status`, `oauth.status`, and
+   `oauth.configure`. Do not use the generic runner for
+   `site_setup.complete`; setup completion can execute installed-app hooks and
+   must use the Release Group runtime image digest.
 
 4. Confirm the target Release Group runtime image is resolved to an immutable
    digest:
