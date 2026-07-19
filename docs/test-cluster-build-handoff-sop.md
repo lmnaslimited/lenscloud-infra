@@ -461,6 +461,29 @@ export HEADLAMP_HOST=headlamp.testcloud.lmnaslens.com
 ./scripts/50-install-headlamp.sh
 ```
 
+Prefer upstream Frappe Operator releases when they satisfy the LensCloud
+contract. For the Bench upgrade asset recovery path, test upstream `v4.1.1`
+before building a LensCloud fork because `v4.1.1` includes Bench
+image-change tracking and asset re-sync behavior.
+
+Operator-managed Bench runtime images must use a new immutable version tag for
+each Release Group image change. Do not update an existing tag in place and
+expect the operator to detect it.
+
+If a cluster needs a LensCloud operator patch, preserve it in:
+
+```text
+https://github.com/lmnaslimited/frappe-operator
+```
+
+Build the operator package/image from that forked operator repo itself, not
+from `lenscloud-infra`, then pin the resulting operator image in the infra
+operator manifest. The upstream source remains:
+
+```text
+https://github.com/vyogotech/frappe-operator
+```
+
 **Gate 7 tests**
 
 ```bash
@@ -901,6 +924,13 @@ For the generic runner path, repeat this whenever a new
    manifests/access/lenscloud-platform-rbac.yaml
    ```
 
+   Update both places in that manifest:
+
+   - `ConfigMap/lenscloud-platform-cluster-contract`
+     `data.bench_command_runner_image`
+   - `ValidatingAdmissionPolicy/lenscloud-platform-bench-command-job-create`
+     exact non-app-aware runner image comparison
+
 3. From the manager/admin checkout, apply the admission manifest to the live
    cluster:
 
@@ -909,14 +939,24 @@ For the generic runner path, repeat this whenever a new
    kubectl apply -f manifests/access/lenscloud-platform-rbac.yaml
    ```
 
-4. Confirm the live `ValidatingAdmissionPolicy` allows the new immutable image:
+4. Confirm the live cluster contract is readable by Platform and returns the
+   accepted immutable image:
+
+   ```bash
+   kubectl --kubeconfig "$PLATFORM_KUBECONFIG" \
+     -n lenscloud-platform-system get configmap \
+     lenscloud-platform-cluster-contract \
+     -o jsonpath='{.data.bench_command_runner_image}{"\n"}'
+   ```
+
+5. Confirm the live `ValidatingAdmissionPolicy` allows the new immutable image:
 
    ```bash
    kubectl get validatingadmissionpolicy \
      lenscloud-platform-bench-command-job-create -o yaml
    ```
 
-5. Only after the live policy contains the new digest, run the relevant
+6. Only after the live policy contains the new digest, run the relevant
    non-app-aware live verifier script and record the evidence and cleanup
    proof.
 
@@ -946,6 +986,15 @@ For the app-aware Release Group runtime-image path:
    ```bash
    scripts/58-verify-platform-bench-command.sh
    ```
+
+   The verifier also proves:
+
+   - Platform can read
+     `lenscloud-platform-system/lenscloud-platform-cluster-contract`;
+   - the configured `bench_command_runner_image` is digest-pinned;
+   - the configured runner image is admitted for `site_setup.status`;
+   - a stale runner digest is denied with the admission message containing
+     `approved execution image`.
 
 4. For app-aware test Jobs, mirror the target Bench pod's sites PVC mount and
    subPath exactly. If the Bench pod uses `subPath: frappe-sites`, the Job must

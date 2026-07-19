@@ -102,7 +102,8 @@ Regression coverage preserved:
 - site setup status/complete/idempotent behavior;
 - OAuth configure/status and local-dev issuer validation;
 - sensitive-output redaction checks;
-- existing generic runner bench.update local harness behavior.
+- app-aware commands `site_bootstrap.install_apps`, `site_app.install`, and
+  `bench.update` now return `COMMAND_UNSUPPORTED` in the generic runner.
 
 ## Live Verification
 

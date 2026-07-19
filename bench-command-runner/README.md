@@ -94,9 +94,6 @@ Current implemented commands:
 - `cors.allowlist.get`
 - `site_setup.status`
 - `site_setup.complete`
-- `site_bootstrap.install_apps`
-- `site_app.install`
-- `bench.update`
 - `oauth.status`
 - `oauth.configure`
 - `backup.status`
@@ -115,6 +112,9 @@ COMMAND_UNSUPPORTED`:
 - `bench_test.status`
 - `latp.trigger`
 - `latp.status`
+- `site_bootstrap.install_apps`
+- `site_app.install`
+- `bench.update`
 
 Build example:
 
@@ -146,30 +146,31 @@ Platform enables newly implemented commands.
 It has not been pushed to GHCR yet, so there is no immutable registry digest to
 pin.
 
-## Release Group App Install And Bench Update
+## App-Aware Release Group Commands
 
-`site_bootstrap.install_apps` installs Release Group apps selected for new Site
-bootstrap after the base Frappe Site exists. `site_app.install` installs an
-eligible app, or small ordered batch, on an existing Site. Both commands:
+The generic `lenscloud-bench-command-runner` image must not execute app-aware
+Release Group commands. The following commands are intentionally unsupported in
+this runner:
 
-- require a Site target;
-- reject `frappe` because Frappe is the base runtime, not an install app item;
-- preserve the ordered app payload;
-- skip apps already installed and report them in `skipped_apps`;
-- return `attempted_apps`, `installed_apps`, `skipped_apps`, `failed_app`,
-  `exit_code`, and sanitized `error_excerpt`.
+- `site_bootstrap.install_apps`
+- `site_app.install`
+- `bench.update`
 
-`bench.update` is Bench-targeted and must not include a Site target. The runner
-executes the operator-safe Bench migration step:
+Those commands must run as direct Kubernetes Jobs inside the digest-pinned
+Release Group runtime image, for example:
 
 ```text
-bench --site all migrate
+ghcr.io/lmnaslimited/lensdocker/lens-pure@sha256:<digest>
 ```
 
-Platform remains responsible for setting/validating `Bench.next_release`,
-ensuring the Release belongs to the Bench Release Group, and requiring every
-active Site on the Bench to be scheduled and tested before creating the command
-Job.
+See:
+
+```text
+docs/handoffs/platform/release-group-app-install-and-bench-upgrade-20260713.md
+docs/testing/bench-command-runner/site_bootstrap_install_apps_template.yaml
+docs/testing/bench-command-runner/site_app_install_template.yaml
+docs/testing/bench-command-runner/bench_update_runtime_image_template.yaml
+```
 
 ## OAuth Secret Boundary
 

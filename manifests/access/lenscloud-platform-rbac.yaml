@@ -28,6 +28,50 @@ metadata:
     kubernetes.io/service-account.name: lenscloud-platform
 type: kubernetes.io/service-account-token
 ---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: lenscloud-platform-cluster-contract
+  namespace: lenscloud-platform-system
+  labels:
+    lenscloud.io/managed-by: infra
+data:
+  bench_command_runner_image: ghcr.io/lmnaslimited/lenscloud-bench-command-runner@sha256:0ba81c0f4031d452eab71a463a562d5f07ace308ae87967725dd807e00c97570
+  bench_command_runner_scope: cluster
+  app_aware_command_families: site_bootstrap,site_app,bench
+  app_aware_runtime_image_pattern: ^ghcr\.io/lmnaslimited/lensdocker/lens-pure@sha256:[0-9a-f]{64}$
+  app_aware_runtime_image_scope: release
+  runner_version_matches_runtime_release: "false"
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: lenscloud-platform-cluster-contract-read
+  namespace: lenscloud-platform-system
+rules:
+  - apiGroups:
+      - ""
+    resources:
+      - configmaps
+    resourceNames:
+      - lenscloud-platform-cluster-contract
+    verbs:
+      - get
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: lenscloud-platform-cluster-contract-read
+  namespace: lenscloud-platform-system
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: lenscloud-platform-cluster-contract-read
+subjects:
+  - kind: ServiceAccount
+    name: lenscloud-platform
+    namespace: lenscloud-platform-system
+---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:

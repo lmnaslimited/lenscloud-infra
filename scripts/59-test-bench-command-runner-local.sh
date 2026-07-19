@@ -142,83 +142,19 @@ run_command setup_sensitive_reject \
   "{\"apiVersion\":\"lenscloud.io/v1\",\"kind\":\"BenchCommand\",\"commandId\":\"local-13\",\"command\":\"site_setup.complete\",${base_target},\"args\":{\"language\":\"English\",\"admin_password\":\"must-not-leak\"},\"timeoutSeconds\":60}" \
   1 | grep '"code":"INVALID_ARGUMENTS"' >/dev/null
 
-run_command bootstrap_install_apps \
-  "{\"apiVersion\":\"lenscloud.io/v1\",\"kind\":\"BenchCommand\",\"commandId\":\"local-13a\",\"command\":\"site_bootstrap.install_apps\",${base_target},\"args\":{\"install_apps\":[{\"app\":\"erpnext\",\"install_sequence\":20},{\"app\":\"hrms\",\"install_sequence\":30}]},\"timeoutSeconds\":60}" |
-  grep -F '"installed_apps":["erpnext","hrms"]' >/dev/null
+run_command app_aware_bootstrap_unsupported \
+  "{\"apiVersion\":\"lenscloud.io/v1\",\"kind\":\"BenchCommand\",\"commandId\":\"local-13a\",\"command\":\"site_bootstrap.install_apps\",${base_target},\"args\":{\"install_apps\":[{\"app\":\"erpnext\",\"install_sequence\":20}]},\"timeoutSeconds\":60}" \
+  0 | grep '"code":"COMMAND_UNSUPPORTED"' >/dev/null
 
-run_command bootstrap_install_apps_idempotent \
-  "{\"apiVersion\":\"lenscloud.io/v1\",\"kind\":\"BenchCommand\",\"commandId\":\"local-13b\",\"command\":\"site_bootstrap.install_apps\",${base_target},\"args\":{\"install_apps\":[{\"app\":\"erpnext\",\"install_sequence\":20},{\"app\":\"hrms\",\"install_sequence\":30}]},\"timeoutSeconds\":60}" |
-  grep -F '"skipped_apps":["erpnext","hrms"]' >/dev/null
-
-run_command existing_site_install_app \
-  "{\"apiVersion\":\"lenscloud.io/v1\",\"kind\":\"BenchCommand\",\"commandId\":\"local-13c\",\"command\":\"site_app.install\",${base_target},\"args\":{\"apps\":[{\"app\":\"payments\",\"install_sequence\":30}]},\"timeoutSeconds\":60}" |
-  grep -F '"installed_apps":["payments"]' >/dev/null
-
-run_command install_frappe_reject \
-  "{\"apiVersion\":\"lenscloud.io/v1\",\"kind\":\"BenchCommand\",\"commandId\":\"local-13d\",\"command\":\"site_app.install\",${base_target},\"args\":{\"apps\":[{\"app\":\"frappe\",\"install_sequence\":1}]},\"timeoutSeconds\":60}" \
-  1 | grep '"code":"INVALID_ARGUMENTS"' >/dev/null
+run_command app_aware_site_app_unsupported \
+  "{\"apiVersion\":\"lenscloud.io/v1\",\"kind\":\"BenchCommand\",\"commandId\":\"local-13b\",\"command\":\"site_app.install\",${base_target},\"args\":{\"apps\":[{\"app\":\"payments\",\"install_sequence\":30}]},\"timeoutSeconds\":60}" \
+  0 | grep '"code":"COMMAND_UNSUPPORTED"' >/dev/null
 
 bench_target='"target":{"namespace":"lenscloud-runtime-eu","bench":"runner-test-bench"}'
 
-run_command bench_update \
-  "{\"apiVersion\":\"lenscloud.io/v1\",\"kind\":\"BenchCommand\",\"commandId\":\"local-13e\",\"command\":\"bench.update\",${bench_target},\"args\":{\"target_release\":\"v16.14.2\"},\"timeoutSeconds\":60}" |
-  grep -F '"target_release":"v16.14.2"' |
-  grep -F '"summary":"Bench update completed"' >/dev/null
-
-run_command bench_update_reject_site_target \
-  "{\"apiVersion\":\"lenscloud.io/v1\",\"kind\":\"BenchCommand\",\"commandId\":\"local-13f\",\"command\":\"bench.update\",${base_target},\"args\":{\"target_release\":\"v16.14.2\"},\"timeoutSeconds\":60}" \
-  1 | grep '"code":"INVALID_ARGUMENTS"' >/dev/null
-
-mkdir -p "$bench_path/apps/frappe" "$bench_path/apps/erpnext" "$bench_path/apps/hrms"
-mkdir -p "$bench_path/env/bin" "$tmpdir/bin"
-cat >"$bench_path/env/bin/bench" <<'SH'
-#!/usr/bin/env bash
-echo "wrong bench executable selected" >&2
-exit 42
-SH
-chmod +x "$bench_path/env/bin/bench"
-fake_bench="$tmpdir/bin/bench"
-cat >"$fake_bench" <<'SH'
-#!/usr/bin/env bash
-set -euo pipefail
-if [[ "$(pwd -P)" != "$(cd "$BENCH_PATH" && pwd -P)" ]]; then
-  echo "bench command did not run from BENCH_PATH" >&2
-  exit 36
-fi
-if [[ ! -f sites/apps.txt ]]; then
-  echo "sites/apps.txt missing" >&2
-  exit 37
-fi
-grep -Fx frappe sites/apps.txt >/dev/null
-grep -Fx erpnext sites/apps.txt >/dev/null
-grep -Fx hrms sites/apps.txt >/dev/null
-printf '%s\n' "$*" >>"$BENCH_UPDATE_TRACE"
-SH
-chmod +x "$fake_bench"
-
-request_path="$tmpdir/request/bench_update_prepares_apps_txt.json"
-termination_path="$tmpdir/request/bench_update_prepares_apps_txt.termination.json"
-printf '%s\n' "{\"apiVersion\":\"lenscloud.io/v1\",\"kind\":\"BenchCommand\",\"commandId\":\"local-13g\",\"command\":\"bench.update\",${bench_target},\"args\":{\"target_release\":\"v16.14.3\"},\"timeoutSeconds\":60}" >"$request_path"
-BENCH_PATH="$bench_path" \
-BENCH_COMMAND_REQUEST="$request_path" \
-BENCH_COMMAND_TERMINATION_LOG="$termination_path" \
-BENCH_UPDATE_TRACE="$tmpdir/bench-update-command" \
-PATH="$tmpdir/bin:$PATH" \
-  python3 bench-command-runner/runner.py >/dev/null
-grep -F '"summary":"Bench update completed"' "$termination_path" >/dev/null
-cat >"$tmpdir/expected-bench-update-command" <<'EOF'
---site all set-config maintenance_mode 1
---site all set-config pause_scheduler 1
---site all migrate
---site all set-config maintenance_mode 0
---site all set-config pause_scheduler 0
-EOF
-diff -u "$tmpdir/expected-bench-update-command" "$tmpdir/bench-update-command"
-if [[ -f "$bench_path/sites/apps.txt" ]]; then
-  echo "bench.update left behind generated sites/apps.txt" >&2
-  cat "$bench_path/sites/apps.txt" >&2
-  exit 1
-fi
+run_command app_aware_bench_update_unsupported \
+  "{\"apiVersion\":\"lenscloud.io/v1\",\"kind\":\"BenchCommand\",\"commandId\":\"local-13c\",\"command\":\"bench.update\",${bench_target},\"args\":{\"target_release\":\"v16.14.2\"},\"timeoutSeconds\":60}" \
+  0 | grep '"code":"COMMAND_UNSUPPORTED"' >/dev/null
 
 run_command oauth_status_missing \
   "{\"apiVersion\":\"lenscloud.io/v1\",\"kind\":\"BenchCommand\",\"commandId\":\"local-14\",\"command\":\"oauth.status\",${base_target},\"args\":{\"provider\":\"platform_oauth_https\"},\"timeoutSeconds\":60}" |

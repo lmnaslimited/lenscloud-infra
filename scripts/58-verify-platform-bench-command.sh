@@ -4,6 +4,8 @@ set -euo pipefail
 : "${MANAGER_KUBECONFIG:=/etc/rancher/k3s/k3s.yaml}"
 : "${PLATFORM_KUBECONFIG:=.artifacts/lenscloud-eu.kubeconfig}"
 : "${RUNTIME_NAMESPACE:=lenscloud-runtime-eu}"
+: "${CONTRACT_NAMESPACE:=lenscloud-platform-system}"
+: "${CONTRACT_CONFIGMAP:=lenscloud-platform-cluster-contract}"
 : "${TEST_PREFIX:=run-$(date -u +%Y%m%d-%H%M)-bench-command}"
 : "${UNAPPROVED_NAMESPACE:=kube-system}"
 
@@ -58,6 +60,7 @@ expect_yes delete configmaps "$RUNTIME_NAMESPACE"
 expect_yes create jobs.batch "$RUNTIME_NAMESPACE"
 expect_yes get jobs.batch "$RUNTIME_NAMESPACE"
 expect_yes list pods "$RUNTIME_NAMESPACE"
+expect_yes get "configmap/${CONTRACT_CONFIGMAP}" "$CONTRACT_NAMESPACE"
 
 expect_no list secrets "$RUNTIME_NAMESPACE"
 expect_no get pods "$RUNTIME_NAMESPACE"
@@ -67,6 +70,14 @@ expect_no create configmaps default
 expect_no create jobs.batch "$UNAPPROVED_NAMESPACE"
 expect_no get pods/log "$RUNTIME_NAMESPACE"
 expect_no patch namespaces _cluster
+
+accepted_runner_image="$("${platform[@]}" -n "$CONTRACT_NAMESPACE" get configmap "$CONTRACT_CONFIGMAP" \
+  -o jsonpath='{.data.bench_command_runner_image}')"
+
+if [[ ! "$accepted_runner_image" =~ ^ghcr\.io/lmnaslimited/lenscloud-bench-command-runner@sha256:[0-9a-f]{64}$ ]]; then
+  echo "Cluster contract bench_command_runner_image is not a digest-pinned runner image: ${accepted_runner_image}" >&2
+  exit 1
+fi
 
 "${platform[@]}" -n "$RUNTIME_NAMESPACE" create configmap "$TEST_PREFIX-request" \
   --from-literal=request.json='{"apiVersion":"lenscloud.io/v1","kind":"BenchCommand","command":"bench_test.status","target":{"bench":"verification","site":"verification.localhost"},"args":{"mode":"status"},"timeoutSeconds":60}' \
@@ -126,6 +137,90 @@ termination_message="$("${platform[@]}" -n "$RUNTIME_NAMESPACE" get pods \
 
 if [[ "$termination_message" != *'"sanitized":true'* ]]; then
   echo "Sanitized termination summary was not found." >&2
+  exit 1
+fi
+
+if ! cat <<EOF | "${platform[@]}" apply --dry-run=server -f - >/dev/null
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: ${TEST_PREFIX}-runner-image-positive
+  namespace: ${RUNTIME_NAMESPACE}
+  labels:
+    lenscloud.io/managed-by: platform
+    lenscloud.io/resource-kind: bench-command
+    lenscloud.io/resource-id: ${TEST_PREFIX}
+  annotations:
+    lenscloud.io/bench-command-family: site_setup
+    lenscloud.io/bench-command: site_setup.status
+spec:
+  backoffLimit: 0
+  template:
+    metadata:
+      labels:
+        lenscloud.io/managed-by: platform
+        lenscloud.io/resource-kind: bench-command
+        lenscloud.io/resource-id: ${TEST_PREFIX}
+    spec:
+      automountServiceAccountToken: false
+      restartPolicy: Never
+      containers:
+        - name: bench-command
+          image: ${accepted_runner_image}
+          securityContext:
+            privileged: false
+          command: ["true"]
+EOF
+then
+  echo "Accepted Bench Command runner image was not admitted for site_setup.status: ${accepted_runner_image}" >&2
+  exit 1
+fi
+
+if stale_runner_rejection="$(
+  cat <<EOF | "${platform[@]}" apply --dry-run=server -f - 2>&1 >/dev/null
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: ${TEST_PREFIX}-runner-image-negative
+  namespace: ${RUNTIME_NAMESPACE}
+  labels:
+    lenscloud.io/managed-by: platform
+    lenscloud.io/resource-kind: bench-command
+    lenscloud.io/resource-id: ${TEST_PREFIX}
+  annotations:
+    lenscloud.io/bench-command-family: site_setup
+    lenscloud.io/bench-command: site_setup.status
+spec:
+  backoffLimit: 0
+  template:
+    metadata:
+      labels:
+        lenscloud.io/managed-by: platform
+        lenscloud.io/resource-kind: bench-command
+        lenscloud.io/resource-id: ${TEST_PREFIX}
+    spec:
+      automountServiceAccountToken: false
+      restartPolicy: Never
+      containers:
+        - name: bench-command
+          image: ghcr.io/lmnaslimited/lenscloud-bench-command-runner@sha256:1111111111111111111111111111111111111111111111111111111111111111
+          securityContext:
+            privileged: false
+          command: ["true"]
+EOF
+)"; then
+  echo "Stale Bench Command runner image unexpectedly passed admission for site_setup.status." >&2
+  exit 1
+fi
+
+if [[ -z "$stale_runner_rejection" ]]; then
+  echo "Stale Bench Command runner image was denied, but no admission message was captured." >&2
+  exit 1
+fi
+
+if [[ "$stale_runner_rejection" != *"approved execution image"* ]]; then
+  echo "Stale Bench Command runner image was denied, but the message did not include the runner-image contract." >&2
+  echo "$stale_runner_rejection" >&2
   exit 1
 fi
 
@@ -304,8 +399,12 @@ fi
 
 echo "Bench Command Job/API RBAC verification passed."
 echo "Runtime namespace: ${RUNTIME_NAMESPACE}"
+echo "Cluster contract ConfigMap: ${CONTRACT_NAMESPACE}/${CONTRACT_CONFIGMAP}"
+echo "Accepted Bench Command runner image: ${accepted_runner_image}"
 echo "Positive command family: bench_test"
 echo "Sanitized result summary: present"
+echo "Accepted Bench Command runner image for site_setup.status: admitted"
+echo "Stale Bench Command runner image for site_setup.status: denied"
 echo "Digest-pinned Release Group runtime image for app-aware bench commands: admitted"
 echo "Old runner image for app-aware bench commands: denied"
 echo "Mutable Release Group runtime tag for app-aware bench commands: denied"

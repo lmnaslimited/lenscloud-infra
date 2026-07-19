@@ -12,22 +12,43 @@ generic runner image.
 
 The generic runner remains in use for existing non-app-aware Bench Commands.
 
+Bench upgrades also depend on the Frappe Operator asset contract. The Release
+runtime image must contain `/home/frappe/assets_cache/assets.json`, and the
+operator-managed nginx Deployment must run the `assets-init` initContainer that
+copies `/home/frappe/assets_cache/.` into the shared
+`/home/frappe/frappe-bench/sites/assets` PVC mount before nginx starts.
+
 ## Preflight
 
 1. Confirm the target Runtime Namespace is approved and labelled for Platform.
 2. Confirm the admission policy is applied from
    `manifests/access/lenscloud-platform-rbac.yaml`.
-3. Confirm the target Release Group runtime image is resolved to an immutable
+3. Confirm Platform can read the cluster contract ConfigMap:
+
+   ```bash
+   kubectl --kubeconfig "$PLATFORM_KUBECONFIG" \
+     -n lenscloud-platform-system get configmap \
+     lenscloud-platform-cluster-contract \
+     -o jsonpath='{.data.bench_command_runner_image}{"\n"}'
+   ```
+
+   This value is the canonical generic runner image for non-app-aware
+   commands such as `site_setup.status`, `site_setup.complete`,
+   `oauth.status`, and `oauth.configure`.
+
+4. Confirm the target Release Group runtime image is resolved to an immutable
    digest:
 
    ```text
    ghcr.io/lmnaslimited/lensdocker/lens-pure@sha256:<64-hex-digest>
    ```
 
-4. Confirm the test Bench and Site are disposable or explicitly approved.
-5. Confirm `frappe` is not present in app install payloads.
-6. Confirm the target app exists in the selected Release Group runtime image.
-7. Confirm the Job sites PVC mount mirrors the Bench pod mount/subPath exactly.
+5. Confirm the test Bench and Site are disposable or explicitly approved.
+6. Confirm `frappe` is not present in app install payloads.
+7. Confirm the target app exists in the selected Release Group runtime image.
+8. Confirm the Job sites PVC mount mirrors the Bench pod mount/subPath exactly.
+9. Confirm the operator nginx Deployment has an `assets-init` initContainer
+   after the Bench runtime image rollout.
 
 ## Local Verification
 
@@ -71,6 +92,10 @@ scripts/58-verify-platform-bench-command.sh
 Expected:
 
 - `bench_test.status` still succeeds through the existing smoke exception.
+- Platform can read the cluster contract ConfigMap and the configured runner
+  digest is admitted for `site_setup.status`.
+- A stale generic runner digest is denied with the admission message containing
+  `approved execution image`.
 - A digest-pinned `lensdocker/lens-pure` image is admitted for `bench.update`.
 - The old generic runner image is denied for `bench.update`.
 - Unlabelled Jobs are denied.
@@ -171,7 +196,19 @@ Expected:
 - target is Bench only, no Site;
 - Job reaches `Complete`;
 - `bench --site all migrate` runs from the `next_release` runtime image;
+- operator rolls nginx with `assets-init` using the same Release runtime image;
+- `assets-init` copies `/home/frappe/assets_cache/.` to
+  `/home/frappe/frappe-bench/sites/assets/` on the shared assets PVC before
+  nginx starts;
 - maintenance mode and scheduler pause are returned to `0`.
+
+After the runtime rollout, verify UI assets, not only root HTML:
+
+```bash
+curl -fsS "https://<site-hostname>" >/tmp/site.html
+grep -o '/assets/[^"]*\\.css' /tmp/site.html | head -n 2
+curl -fI "https://<site-hostname>/<generated-css-path-from-html>"
+```
 
 ## Negative Checks
 
