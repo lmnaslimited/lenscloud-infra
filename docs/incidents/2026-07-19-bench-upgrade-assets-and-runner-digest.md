@@ -4,8 +4,7 @@ Date: 2026-07-19
 
 ## INC-20260719-001: Generated Assets Missing After Bench Upgrade
 
-Status: Resolved by upstream Frappe Operator `v4.1.1` path; Platform
-adaptation pending.
+Status: Resolved live for the reported Bench; Platform retest pending.
 
 Platform upgraded `run-20260702-free-prod-bench` to Release
 `RELEASE-lens-pure-v16.14.3-1` using runtime image digest
@@ -35,9 +34,36 @@ CSS asset: /assets/frappe/dist/css/website.bundle.JTHFRTK2.css
 assets.json on PVC: non-empty
 ```
 
+Follow-up live recovery for the already-upgraded Bench:
+
+```text
+Bench: run-20260702-free-prod-bench
+Namespace: lenscloud-runtime-eu
+Operator init Job: run-20260702-free-prod-bench-init
+Init pod: run-20260702-free-prod-bench-init-9nx9g
+Init pod exit code: 0
+Final initializedImage: ghcr.io/lmnaslimited/lensdocker/lens-pure:v16.14.3
+```
+
+Because this Bench had already reached `initializedImage=v16.14.3` before the
+operator rollout, Infra reset only the status marker to trigger v4.1.1 re-init,
+then deleted the stale shared Frappe `assets_json` cache key and rolled
+gunicorn/nginx/socketio.
+
+Final live asset checks:
+
+```text
+tharahub_root=200
+tharahub_css=/assets/frappe/dist/css/website.bundle.JTHFRTK2.css 200
+tharahub_js=/assets/erpnext/dist/js/bank-reconciliation-tool.bundle.3OD5XE4B.js 200
+brandkite2e0717_root=200
+brandkite2e0717_css=/assets/frappe/dist/css/website.bundle.JTHFRTK2.css 200
+brandkite2e0717_js=/assets/erpnext/dist/js/bank-reconciliation-tool.bundle.3OD5XE4B.js 200
+```
+
 ## INC-20260719-002: Bench Command Runner Digest Contract Not Discoverable
 
-Status: Resolved by infra contract; Platform adaptation pending.
+Status: Resolved live; Platform sync/retest pending.
 
 Platform-generated `site_setup.complete` Jobs use the generic Bench Command
 runner image. Admission requires an exact digest-pinned runner image, but
@@ -65,3 +91,15 @@ ghcr.io/lmnaslimited/lenscloud-bench-command-runner@sha256:0ba81c0f4031d452eab71
 If server-side dry-run is denied with admission text containing
 `approved execution image`, Platform must classify the failure as
 `BENCH_COMMAND_RUNNER_IMAGE_REJECTED`.
+
+Follow-up live fix:
+
+```text
+configmap/lenscloud-platform-cluster-contract created
+role.rbac.authorization.k8s.io/lenscloud-platform-cluster-contract-read created
+rolebinding.rbac.authorization.k8s.io/lenscloud-platform-cluster-contract-read created
+named ConfigMap get as Platform service account: yes
+ConfigMap list as Platform service account: no
+restricted Platform kubeconfig read: succeeded
+scripts/58-verify-platform-bench-command.sh: passed
+```

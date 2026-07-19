@@ -54,6 +54,25 @@ expect_no() {
   fi
 }
 
+platform_service_account="system:serviceaccount:${CONTRACT_NAMESPACE}:lenscloud-platform"
+contract_can_i="$("${manager[@]}" auth can-i get "configmap/${CONTRACT_CONFIGMAP}" \
+  --as "$platform_service_account" \
+  -n "$CONTRACT_NAMESPACE" 2>/dev/null || true)"
+
+if [[ "$contract_can_i" != "yes" ]]; then
+  echo "Expected named ConfigMap read failed for ${platform_service_account}: ${CONTRACT_NAMESPACE}/${CONTRACT_CONFIGMAP}" >&2
+  exit 1
+fi
+
+contract_list_can_i="$("${manager[@]}" auth can-i list configmaps \
+  --as "$platform_service_account" \
+  -n "$CONTRACT_NAMESPACE" 2>/dev/null || true)"
+
+if [[ "$contract_list_can_i" != "no" ]]; then
+  echo "Expected ConfigMap list denial failed for ${platform_service_account}: ${CONTRACT_NAMESPACE}" >&2
+  exit 1
+fi
+
 expect_yes create configmaps "$RUNTIME_NAMESPACE"
 expect_yes get configmaps "$RUNTIME_NAMESPACE"
 expect_yes delete configmaps "$RUNTIME_NAMESPACE"
@@ -400,6 +419,8 @@ fi
 echo "Bench Command Job/API RBAC verification passed."
 echo "Runtime namespace: ${RUNTIME_NAMESPACE}"
 echo "Cluster contract ConfigMap: ${CONTRACT_NAMESPACE}/${CONTRACT_CONFIGMAP}"
+echo "Cluster contract named get via auth can-i: ${contract_can_i}"
+echo "Cluster contract ConfigMap list via auth can-i: ${contract_list_can_i}"
 echo "Accepted Bench Command runner image: ${accepted_runner_image}"
 echo "Positive command family: bench_test"
 echo "Sanitized result summary: present"

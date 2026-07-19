@@ -943,10 +943,47 @@ For the generic runner path, repeat this whenever a new
    accepted immutable image:
 
    ```bash
+   kubectl --kubeconfig "$MANAGER_KUBECONFIG" auth can-i get \
+     configmap/lenscloud-platform-cluster-contract \
+     --as system:serviceaccount:lenscloud-platform-system:lenscloud-platform \
+     -n lenscloud-platform-system
+
+   kubectl --kubeconfig "$MANAGER_KUBECONFIG" auth can-i list configmaps \
+     --as system:serviceaccount:lenscloud-platform-system:lenscloud-platform \
+     -n lenscloud-platform-system
+
    kubectl --kubeconfig "$PLATFORM_KUBECONFIG" \
      -n lenscloud-platform-system get configmap \
      lenscloud-platform-cluster-contract \
      -o jsonpath='{.data.bench_command_runner_image}{"\n"}'
+   ```
+
+   Expected results:
+
+   ```text
+   named ConfigMap get: yes
+   ConfigMap list in lenscloud-platform-system: no
+   jsonpath output: ghcr.io/lmnaslimited/lenscloud-bench-command-runner@sha256:<accepted-digest>
+   ```
+
+   The first check uses the `configmap/<name>` resource form because this
+   permission is intentionally narrowed with `resourceNames` and does not grant
+   ConfigMap listing.
+
+   After this gate passes, tell Platform to run its sync API:
+
+   ```bash
+   bench --site dev.localhost execute \
+     lenscloud.api.bench_command.sync_cluster_bench_command_runner_contract \
+     --args '["<cluster-name>"]'
+   ```
+
+   Platform should report:
+
+   ```text
+   bench_command_runner_contract_status = Synced
+   bench_command_runner_image = ghcr.io/lmnaslimited/lenscloud-bench-command-runner@sha256:<accepted-digest>
+   bench_command_runner_contract_error = NULL
    ```
 
 5. Confirm the live `ValidatingAdmissionPolicy` allows the new immutable image:
@@ -1008,6 +1045,94 @@ docs/testing/bench-command-runner/site_bootstrap_install_apps_template.yaml
 docs/testing/bench-command-runner/site_app_install_template.yaml
 docs/testing/bench-command-runner/bench_update_runtime_image_template.yaml
 ```
+
+### Bench Upgrade Asset Readiness
+
+For Bench upgrades handled by upstream Frappe Operator `v4.1.1`, asset recovery
+has three gates:
+
+1. The Bench spec uses the new immutable release tag:
+
+   ```text
+   spec.imageConfig.repository = ghcr.io/lmnaslimited/lensdocker/lens-pure
+   spec.imageConfig.tag = <new-release-tag>
+   ```
+
+2. The operator has completed the Bench init Job for that exact image:
+
+   ```bash
+   kubectl --kubeconfig "$MANAGER_KUBECONFIG" \
+     -n "$RUNTIME_NAMESPACE" get frappebench "$BENCH_NAME" \
+     -o jsonpath='{.status.initializedImage}{"\n"}'
+
+   kubectl --kubeconfig "$MANAGER_KUBECONFIG" \
+     -n "$RUNTIME_NAMESPACE" get job "${BENCH_NAME}-init"
+   ```
+
+   Expected `initializedImage`:
+
+   ```text
+   ghcr.io/lmnaslimited/lensdocker/lens-pure:<new-release-tag>
+   ```
+
+3. Frappe is resolving current assets from the recovered manifest.
+
+After the Bench init Job completes, clear the shared Frappe `assets_json` cache
+and roll the web processes before checking public asset URLs:
+
+```bash
+kubectl --kubeconfig "$MANAGER_KUBECONFIG" \
+  -n "$RUNTIME_NAMESPACE" exec "deploy/${BENCH_NAME}-gunicorn" -- bash -lc '
+    cd /home/frappe/frappe-bench
+    for site in <site-1> <site-2>; do
+      bench --site "$site" execute frappe.client_cache.delete_value \
+        --args "[\"assets_json\"]" \
+        --kwargs "{\"shared\": True}"
+    done
+    bench --site all clear-website-cache
+    bench --site all clear-cache
+  '
+
+kubectl --kubeconfig "$MANAGER_KUBECONFIG" \
+  -n "$RUNTIME_NAMESPACE" rollout restart \
+  "deployment/${BENCH_NAME}-gunicorn" \
+  "deployment/${BENCH_NAME}-nginx" \
+  "deployment/${BENCH_NAME}-socketio"
+
+kubectl --kubeconfig "$MANAGER_KUBECONFIG" \
+  -n "$RUNTIME_NAMESPACE" rollout status \
+  "deployment/${BENCH_NAME}-gunicorn" --timeout=5m
+
+kubectl --kubeconfig "$MANAGER_KUBECONFIG" \
+  -n "$RUNTIME_NAMESPACE" rollout status \
+  "deployment/${BENCH_NAME}-nginx" --timeout=5m
+
+kubectl --kubeconfig "$MANAGER_KUBECONFIG" \
+  -n "$RUNTIME_NAMESPACE" rollout status \
+  "deployment/${BENCH_NAME}-socketio" --timeout=5m
+```
+
+Then fetch each Site root, parse the current HTML-generated CSS and JS URLs,
+and verify those exact URLs return HTTP 200. Do not verify only old reported
+hashes, and do not accept root HTML 200 as asset readiness.
+
+For a Bench already upgraded before `v4.1.1`, if
+`status.initializedImage` already equals the current tag but assets are still
+broken, trigger one-time operator re-init by resetting only the status marker
+to the previous initialized image:
+
+```bash
+kubectl --kubeconfig "$MANAGER_KUBECONFIG" \
+  -n "$RUNTIME_NAMESPACE" patch frappebench "$BENCH_NAME" \
+  --subresource=status \
+  --type=merge \
+  -p '{"status":{"initializedImage":"ghcr.io/lmnaslimited/lensdocker/lens-pure:<previous-release-tag>"}}'
+```
+
+Wait for `${BENCH_NAME}-init` to complete and for `initializedImage` to return
+to the new tag, then clear `assets_json`, roll web, and verify generated CSS/JS
+as above. Do not patch the Bench spec for this recovery unless the runtime
+image itself is wrong.
 
 For `INF-026`, publish and admission-pin a runner image that includes the
 local-dev OAuth issuer contract, then run the OAuth verifier against a real
