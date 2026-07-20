@@ -1163,6 +1163,57 @@ to the new tag, then clear `assets_json`, roll web, and verify generated CSS/JS
 as above. Do not patch the Bench spec for this recovery unless the runtime
 image itself is wrong.
 
+### Bench Worker And Queue Readiness
+
+Before customer setup-complete retries, app-aware setup tests, or Bench
+upgrades, confirm the target Bench has workers for every queue. A scheduler or
+Site setup flow with workers scaled to zero can fill Redis until Frappe raises:
+
+```text
+frappe.exceptions.QueueOverloaded: Too many queued background jobs (750).
+```
+
+Check desired and live worker state:
+
+```bash
+kubectl --kubeconfig "$MANAGER_KUBECONFIG" \
+  -n "$RUNTIME_NAMESPACE" get frappebench "$BENCH_NAME" \
+  -o jsonpath='{.spec.componentAutoscaling.scheduler.staticReplicas}{" "}{.spec.componentAutoscaling.worker-default.staticReplicas}{" "}{.spec.componentAutoscaling.worker-short.staticReplicas}{" "}{.spec.componentAutoscaling.worker-long.staticReplicas}{"\n"}'
+
+kubectl --kubeconfig "$MANAGER_KUBECONFIG" \
+  -n "$RUNTIME_NAMESPACE" get deploy \
+  "$BENCH_NAME"-scheduler \
+  "$BENCH_NAME"-worker-default \
+  "$BENCH_NAME"-worker-short \
+  "$BENCH_NAME"-worker-long
+```
+
+Expected for active customer Benches:
+
+```text
+scheduler/default/short/long desired replicas: 1 1 1 1
+Deployments: 1/1 for scheduler and every worker
+```
+
+Check Redis queue lengths from the Bench queue Redis pod:
+
+```bash
+QUEUE_POD="$BENCH_NAME-redis-queue-0"
+
+kubectl --kubeconfig "$MANAGER_KUBECONFIG" \
+  -n "$RUNTIME_NAMESPACE" exec "$QUEUE_POD" -- \
+  redis-cli LLEN rq:queue:home-frappe-frappe-bench:default
+
+kubectl --kubeconfig "$MANAGER_KUBECONFIG" \
+  -n "$RUNTIME_NAMESPACE" exec "$QUEUE_POD" -- \
+  redis-cli LLEN rq:queue:home-frappe-frappe-bench:long
+```
+
+Do not flush Redis queues blindly. If workers are healthy, allow queues to
+drain naturally and record before/after counts. Clear queue keys only under a
+separate tenant-safe incident decision that names the queue keys and explains
+why the jobs are stale test-only work.
+
 For `INF-026`, publish and admission-pin a runner image that includes the
 local-dev OAuth issuer contract, then run the OAuth verifier against a real
 Platform-managed Bench/Site:
