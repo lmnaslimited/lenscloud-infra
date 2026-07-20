@@ -1043,6 +1043,30 @@ For the app-aware Release Group runtime-image path:
    use the same subPath. If the Bench pod mounts the PVC root directly, the Job
    must mount the root directly.
 
+5. Do not copy the app-aware assets mount into generic runner Jobs. Generic
+   commands such as `site_setup.status`, `oauth.status`, and status-style
+   maintenance checks mount only:
+
+   ```yaml
+   volumeMounts:
+     - name: request
+       mountPath: /lenscloud/request
+       readOnly: true
+     - name: sites
+       mountPath: /home/frappe/frappe-bench/sites
+       readOnly: true
+   ```
+
+   Add `subPath` to the `sites` mount only when the target Bench pod itself
+   uses that `sites` subPath. Do not add a nested
+   `/home/frappe/frappe-bench/sites/assets` mount to generic runner Jobs.
+
+   The separate `sites-assets` mount is reserved for app-aware runtime-image
+   Jobs, and even there it must mirror the target Bench pod. A containerd error
+   mentioning a mountpoint under `/home/frappe/frappe-bench/sites/assets` during
+   `site_setup.status` means the Job manifest is stale, hand-edited, or not
+   following the generic runner contract.
+
 Use these templates for manual live checks:
 
 ```text
