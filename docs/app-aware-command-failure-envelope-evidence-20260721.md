@@ -78,6 +78,32 @@ The controlled scripts did not accept arbitrary shell commands, did not mount
 Secrets, did not use mutable images, and emitted only the canonical nested
 `message` object to `/dev/termination-log`.
 
+Platform-created Jobs may invoke these faults only with the non-secret
+annotation:
+
+```text
+lenscloud.io/acceptance-fault
+```
+
+The Platform-generated Release-runtime Job must copy the annotation into this
+container env var using the Kubernetes Downward API:
+
+```yaml
+env:
+  - name: LENS_INFRA_ACCEPTANCE_FAULT
+    valueFrom:
+      fieldRef:
+        fieldPath: metadata.annotations['lenscloud.io/acceptance-fault']
+```
+
+Server-side dry-run on 2026-07-21 proved this exact annotation/env shape is
+admitted by the deployed policy for both `site_bootstrap.install_apps` and
+`site_setup.complete`:
+
+```text
+acceptance fault annotation/downward-env dry-run admitted for bootstrap and setup
+```
+
 ## Bootstrap Failure And Recovery
 
 Target:
