@@ -36,7 +36,7 @@ metadata:
   labels:
     lenscloud.io/managed-by: infra
 data:
-  bench_command_runner_image: ghcr.io/lmnaslimited/lenscloud-bench-command-runner@sha256:0ba81c0f4031d452eab71a463a562d5f07ace308ae87967725dd807e00c97570
+  bench_command_runner_image: ghcr.io/lmnaslimited/lenscloud-bench-command-runner@sha256:3b71912830d3dac1465a7e3cfa03dd64c76b17826fd7614a6801e4c539813cf5
   bench_command_runner_scope: cluster
   app_aware_command_families: site_bootstrap,site_app,bench
   app_aware_runtime_image_pattern: ^ghcr\.io/lmnaslimited/lensdocker/lens-pure@sha256:[0-9a-f]{64}$
@@ -460,7 +460,7 @@ spec:
                   && object.metadata.annotations['lenscloud.io/bench-command'] == 'site_setup.complete'
                 )
               )
-              && container.image == 'ghcr.io/lmnaslimited/lenscloud-bench-command-runner@sha256:0ba81c0f4031d452eab71a463a562d5f07ace308ae87967725dd807e00c97570'
+              && container.image == 'ghcr.io/lmnaslimited/lenscloud-bench-command-runner@sha256:3b71912830d3dac1465a7e3cfa03dd64c76b17826fd7614a6801e4c539813cf5'
             )
             || (
               object.metadata.annotations['lenscloud.io/bench-command-family'] == 'bench_test'

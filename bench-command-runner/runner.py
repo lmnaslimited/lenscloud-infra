@@ -44,6 +44,9 @@ COMMANDS = {
     "site_setup.complete",
     "oauth.status",
     "oauth.configure",
+    "site_bootstrap.install_apps",
+    "site_app.install",
+    "bench.update",
     "bench_test.trigger",
     "bench_test.status",
     "latp.trigger",
@@ -56,8 +59,71 @@ RUNNER_PENDING = {
     "restore.execute",
     "restore.status",
     "bench_test.trigger",
+    "bench_test.status",
     "latp.trigger",
     "latp.status",
+    "site_bootstrap.install_apps",
+    "site_app.install",
+    "bench.update",
+}
+
+MESSAGE_CATALOG = {
+    "LC-INFRA-RUNNER-0001": {
+        "message_type": "Error",
+        "source": "Runner",
+        "destination": "Platform",
+        "safe_summary": "Runner image digest was rejected or is stale.",
+    },
+    "LC-INFRA-RUNNER-0002": {
+        "message_type": "Error",
+        "source": "Runner",
+        "destination": "Platform",
+        "safe_summary": "Runner command failed.",
+    },
+    "LC-INFRA-STORAGE-0001": {
+        "message_type": "Error",
+        "source": "Runner",
+        "destination": "Platform",
+        "safe_summary": "Bench sites storage contract is unavailable.",
+    },
+    "LC-INFRA-UNKNOWN-0001": {
+        "message_type": "Error",
+        "source": "Runner",
+        "destination": "Platform",
+        "safe_summary": "Infra command failed with an unknown safe fallback.",
+    },
+    "LC-INFRA-QUEUE-0001": {
+        "message_type": "Error",
+        "source": "Runner",
+        "destination": "Platform",
+        "safe_summary": "Target runtime background jobs did not drain in time.",
+    },
+    "LC-INFRA-BOOTSTRAP-0001": {
+        "message_type": "Error",
+        "source": "Runner",
+        "destination": "Platform",
+        "safe_summary": "Bootstrap app installation failed.",
+    },
+    "LC-INFRA-TIMEOUT-0001": {
+        "message_type": "Error",
+        "source": "Runner",
+        "destination": "Platform",
+        "safe_summary": "Runner command timed out.",
+    },
+    "LC-INFRA-COMMAND-0001": {
+        "message_type": "Error",
+        "source": "Runner",
+        "destination": "Platform",
+        "safe_summary": "Runner command is unsupported.",
+    },
+}
+
+MESSAGE_SCOPED_COMMANDS = {
+    "site_bootstrap.install_apps",
+    "site_setup.status",
+    "site_setup.complete",
+    "oauth.status",
+    "oauth.configure",
 }
 
 APPROVED_SITE_CONFIG_KEYS = {
@@ -105,6 +171,11 @@ TERMINATION_PATH = Path(os.environ.get("BENCH_COMMAND_TERMINATION_LOG", "/dev/te
 BENCH_PYTHON = Path(os.environ.get("BENCH_PYTHON", str(BENCH_PATH / "env" / "bin" / "python")))
 BENCH_EXECUTABLE = os.environ.get("BENCH_EXECUTABLE", "").strip()
 FAKE_FRAPPE_SETUP = os.environ.get("LENS_COMMAND_FAKE_FRAPPE_SETUP") == "1"
+ENABLE_APP_AWARE_COMMANDS = os.environ.get("LENS_COMMAND_ENABLE_APP_AWARE_COMMANDS") == "1"
+FAKE_APP_INSTALL_FAIL = os.environ.get("LENS_COMMAND_FAKE_APP_INSTALL_FAIL", "").strip().lower()
+FAKE_SETUP_QUEUE_OVERLOAD = os.environ.get("LENS_COMMAND_FAKE_SETUP_QUEUE_OVERLOAD") == "1"
+FAKE_TIMEOUT_COMMAND = os.environ.get("LENS_COMMAND_FAKE_TIMEOUT_COMMAND", "").strip()
+FORCE_UNKNOWN_FAILURE = os.environ.get("LENS_COMMAND_FORCE_UNKNOWN_FAILURE") == "1"
 MAX_SETUP_ARGS_BYTES = int(os.environ.get("LENS_COMMAND_MAX_SETUP_ARGS_BYTES", "16384"))
 OAUTH_CLIENT_SECRET_PATH = Path(
     os.environ.get("LENS_COMMAND_OAUTH_CLIENT_SECRET_PATH", "/lenscloud/secrets/client_secret")
@@ -229,6 +300,7 @@ def result(
     code: str | None = None,
     details: dict[str, Any] | None = None,
     display: dict[str, Any] | None = None,
+    failure_message_id: str | None = None,
 ) -> dict[str, Any]:
     target_payload = {
         "namespace": target.get("namespace"),
@@ -251,7 +323,118 @@ def result(
         payload["details"] = sanitize(details)
     if display:
         payload["display"] = sanitize(display)
+    message = failure_message(
+        phase=phase,
+        command=command,
+        code=code,
+        details=details,
+        failure_message_id=failure_message_id,
+    )
+    if message:
+        payload["message"] = message
     return payload
+
+
+def failure_message(
+    *,
+    phase: str,
+    command: str,
+    code: str | None,
+    details: dict[str, Any] | None,
+    failure_message_id: str | None = None,
+) -> dict[str, Any] | None:
+    if phase == "Succeeded" or command not in MESSAGE_SCOPED_COMMANDS:
+        return None
+    message_id = failure_message_id or classify_failure_message_id(command, code, details)
+    definition = MESSAGE_CATALOG[message_id]
+    return {
+        "message_id": message_id,
+        "message_type": definition["message_type"],
+        "source": definition["source"],
+        "destination": definition["destination"],
+        "params": failure_message_params(
+            message_id=message_id,
+            command=command,
+            code=code,
+            details=details,
+        ),
+        "safe_summary": definition["safe_summary"],
+        "details_ref": None,
+    }
+
+
+def classify_failure_message_id(command: str, code: str | None, details: dict[str, Any] | None) -> str:
+    if code == "COMMAND_UNSUPPORTED":
+        return "LC-INFRA-COMMAND-0001"
+    if code == "TIMEOUT":
+        return "LC-INFRA-TIMEOUT-0001"
+    if code in {"TARGET_NOT_FOUND", "TARGET_MISMATCH", "NAMESPACE_NOT_APPROVED"}:
+        return "LC-INFRA-STORAGE-0001"
+    if command == "site_bootstrap.install_apps" and details and details.get("failed_app"):
+        return "LC-INFRA-BOOTSTRAP-0001"
+    if command == "site_setup.complete" and details and details.get("response_status") == "registered":
+        return "LC-INFRA-QUEUE-0001"
+    if code == "UNKNOWN_INFRA_FAILURE":
+        return "LC-INFRA-UNKNOWN-0001"
+    return "LC-INFRA-RUNNER-0002"
+
+
+def failure_message_params(
+    *,
+    message_id: str,
+    command: str,
+    code: str | None,
+    details: dict[str, Any] | None,
+) -> dict[str, Any]:
+    params: dict[str, Any] = {
+        "operation": command,
+        "reason": safe_reason(code),
+    }
+    details = details or {}
+    if message_id == "LC-INFRA-STORAGE-0001":
+        params["mount_kind"] = "bench-sites"
+        layout = details.get("layout")
+        if isinstance(layout, str) and layout:
+            params["layout"] = layout
+    elif message_id == "LC-INFRA-BOOTSTRAP-0001":
+        failed_app = details.get("failed_app")
+        if isinstance(failed_app, str) and failed_app:
+            params["app"] = failed_app
+        params["exit_code"] = int(details.get("exit_code") or 1)
+    elif message_id == "LC-INFRA-TIMEOUT-0001":
+        params["timeout_seconds"] = request_timeout_for_message()
+    elif message_id == "LC-INFRA-RUNNER-0002":
+        if "exit_code" in details:
+            params["exit_code"] = int(details.get("exit_code") or 1)
+    elif message_id == "LC-INFRA-QUEUE-0001":
+        pending_apps = details.get("pending_apps")
+        if isinstance(pending_apps, list):
+            params["queued_count"] = len(pending_apps)
+            if pending_apps:
+                params["queue"] = "setup_wizard"
+    return sanitize(params)
+
+
+def safe_reason(code: str | None) -> str:
+    if code in {
+        "COMMAND_UNSUPPORTED",
+        "TIMEOUT",
+        "TARGET_NOT_FOUND",
+        "TARGET_MISMATCH",
+        "NAMESPACE_NOT_APPROVED",
+        "INVALID_ARGUMENTS",
+        "RUNNER_FAILED",
+        "UNKNOWN_INFRA_FAILURE",
+    }:
+        return code
+    return "RUNNER_FAILED"
+
+
+def request_timeout_for_message(default: int = 300) -> int:
+    try:
+        return request_timeout_seconds(default=default)
+    except CommandError:
+        return default
 
 
 def human_flag(value: Any) -> str:
@@ -918,9 +1101,17 @@ finally:
 
 
 def run_frappe_setup(site: str, operation: str, args: dict[str, Any], timeout: int) -> dict[str, Any]:
+    if FAKE_TIMEOUT_COMMAND == f"site_setup.{operation}":
+        raise CommandError("TIMEOUT", "site setup command timed out", "Timed Out")
     if FAKE_FRAPPE_SETUP:
         state_path, state = fake_setup_state(site)
         if operation == "complete":
+            if FAKE_SETUP_QUEUE_OVERLOAD:
+                state["setup_complete"] = False
+                state["setup_required"] = True
+                state.setdefault("pending_apps", ["frappe"])
+                state["response_status"] = "registered"
+                return state
             state["setup_complete"] = True
             state["setup_required"] = False
             state_path.write_text(json.dumps({"setup_complete": True}) + "\n", encoding="utf-8")
@@ -968,6 +1159,8 @@ def run_frappe_setup(site: str, operation: str, args: dict[str, Any], timeout: i
 
 
 def run_frappe_app_install(site: str, apps: list[dict[str, Any]], timeout: int) -> dict[str, Any]:
+    if FAKE_TIMEOUT_COMMAND == "site_bootstrap.install_apps":
+        raise CommandError("TIMEOUT", "app install command timed out", "Timed Out")
     if FAKE_FRAPPE_SETUP:
         state_path, state = fake_apps_state(site)
         installed_set = set(state["installed_apps"])
@@ -975,6 +1168,16 @@ def run_frappe_app_install(site: str, apps: list[dict[str, Any]], timeout: int) 
         installed_apps = []
         skipped_apps = []
         for app in attempted:
+            if FAKE_APP_INSTALL_FAIL and app == FAKE_APP_INSTALL_FAIL:
+                return {
+                    "attempted_apps": attempted,
+                    "installed_apps": installed_apps,
+                    "skipped_apps": skipped_apps,
+                    "failed_app": app,
+                    "error_excerpt": "controlled app install failure",
+                    "exit_code": 1,
+                    "layout": state.get("_layout"),
+                }
             if app in installed_set:
                 skipped_apps.append(app)
                 continue
@@ -1234,6 +1437,8 @@ def oauth_display(state: dict[str, Any]) -> dict[str, Any]:
 
 
 def run_frappe_oauth(site: str, operation: str, payload: dict[str, Any], timeout: int) -> dict[str, Any]:
+    if FAKE_TIMEOUT_COMMAND == f"oauth.{operation}":
+        raise CommandError("TIMEOUT", "oauth command timed out", "Timed Out")
     if FAKE_FRAPPE_SETUP:
         state_path, state = fake_oauth_state(site)
         provider = str(payload["provider"])
@@ -1647,7 +1852,9 @@ def command_site_setup(command: str, target: dict[str, Any], args: dict[str, Any
 
 
 def dispatch(command: str, target: dict[str, Any], args: dict[str, Any]) -> dict[str, Any]:
-    if command in RUNNER_PENDING:
+    if command in RUNNER_PENDING and not (
+        ENABLE_APP_AWARE_COMMANDS and command in {"site_bootstrap.install_apps", "site_app.install", "bench.update"}
+    ):
         raise CommandError("COMMAND_UNSUPPORTED", "command family is contracted but runner-pending", "Unsupported")
     if command.startswith("backup."):
         return command_backup(command, target, args)
@@ -1681,6 +1888,8 @@ def main() -> int:
     global current_request
     try:
         current_request = read_request()
+        if FORCE_UNKNOWN_FAILURE:
+            raise RuntimeError("controlled unknown infra failure")
         command, target, args = validate_request(current_request)
         payload = dispatch(command, target, args)
         write_result(payload)
@@ -1703,7 +1912,7 @@ def main() -> int:
             command=str(current_request.get("command") or "unknown"),
             target=current_request.get("target") if isinstance(current_request.get("target"), dict) else {},
             summary="Runner failed with sanitized internal error",
-            code="RUNNER_FAILED",
+            code="UNKNOWN_INFRA_FAILURE",
         )
         write_result(payload)
         return 1

@@ -56,6 +56,8 @@ The runner:
 - validates command, target, and typed args;
 - mutates only approved `site_config.json` keys for supported controls;
 - returns sanitized JSON through the container termination log;
+- returns a nested Infra-owned `message` envelope for failed scoped
+  `site_bootstrap.install_apps`, `site_setup.*`, and `oauth.*` POC operations;
 - returns a stable `display` object for supported read/status commands;
 - does not use the Kubernetes API;
 - does not require Kubernetes Secret mounts except for the approved
@@ -78,6 +80,35 @@ Display contract:
 
 Platform may render `display.value` only when `display.safe` is `true`.
 Failed and unsupported commands do not include `display`.
+
+Failure message contract:
+
+```json
+{
+  "phase": "Failed",
+  "code": "RUNNER_FAILED",
+  "command": "site_setup.status",
+  "message": {
+    "message_id": "LC-INFRA-RUNNER-0002",
+    "message_type": "Error",
+    "source": "Runner",
+    "destination": "Platform",
+    "params": {
+      "operation": "site_setup.status",
+      "reason": "RUNNER_FAILED",
+      "exit_code": 1
+    },
+    "safe_summary": "Runner command failed.",
+    "details_ref": null
+  },
+  "redacted": true
+}
+```
+
+The machine-readable catalog is
+[`message_catalog.v1.json`](./message_catalog.v1.json). Platform should prefer
+`message.message_id` and `message.params` when present, while keeping legacy
+`phase`/`code`/`summary` handling as a migration fallback.
 
 Current implemented commands:
 
@@ -127,15 +158,15 @@ docker build \
 Current published image:
 
 ```text
-ghcr.io/lmnaslimited/lenscloud-bench-command-runner:v0.1.11
-ghcr.io/lmnaslimited/lenscloud-bench-command-runner@sha256:3e7867ff7cb0285395aafd380232496f854c6d014c237b8790cbcbfd1bd577ef
+ghcr.io/lmnaslimited/lenscloud-bench-command-runner@sha256:3b71912830d3dac1465a7e3cfa03dd64c76b17826fd7614a6801e4c539813cf5
 ```
 
-The published digest above includes the local-dev OAuth HTTP gate for
-`INF-026`. It still requires admission application and live verification with:
+The published digest above includes the LensCloud message-envelope runner
+contract for `INF-028`. It still requires admission application and live
+verification with:
 
 ```bash
-scripts/65-verify-cua-oauth-runner.sh
+scripts/58-verify-platform-bench-command.sh
 ```
 
 Cluster pull access must be verified in each runtime environment before
