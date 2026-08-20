@@ -118,6 +118,10 @@ Current implemented commands:
 - `developer_mode.enable`
 - `developer_mode.disable`
 - `developer_mode.status`
+- `scheduler.enable`
+- `scheduler.disable`
+- `server_script.enable`
+- `server_script.disable`
 - `site_config.set`
 - `site_config.unset`
 - `site_config.get`
