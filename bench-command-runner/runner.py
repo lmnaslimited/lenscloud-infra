@@ -1878,9 +1878,9 @@ def dispatch(command: str, target: dict[str, Any], args: dict[str, Any]) -> dict
         value = 0 if command.endswith(".enable") else 1
         return command_boolean_config(command, target, "pause_scheduler", None if command.endswith(".status") else value)
     if command.startswith("server_script."):
-        # enable sets server_script_enable=0; disable sets server_script_enable=1
-        value = 0 if command.endswith(".enable") else 1
-        return command_boolean_config(command, target, "server_script_enable", None if command.endswith(".status") else value)
+        # enable sets server_script_enable=1; disable sets server_script_enabled=0
+        value = 1 if command.endswith(".enable") else 0
+        return command_boolean_config(command, target, "server_script_enabled", None if command.endswith(".status") else value)
     if command.startswith("cors."):
         return command_cors(command, target, args)
     if command.startswith("site_setup."):
