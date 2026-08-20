@@ -33,6 +33,8 @@ COMMANDS = {
     "maintenance_mode.disable",
     "scheduler.enable",
     "scheduler.disable",
+    "server_script.enable",
+    "server_script.disable",
     "maintenance_mode.status",
     "developer_mode.enable",
     "developer_mode.disable",
@@ -1875,6 +1877,10 @@ def dispatch(command: str, target: dict[str, Any], args: dict[str, Any]) -> dict
         # enable sets pause_scheduler=0; disable sets pause_scheduler=1
         value = 0 if command.endswith(".enable") else 1
         return command_boolean_config(command, target, "pause_scheduler", None if command.endswith(".status") else value)
+    if command.startswith("server_script."):
+        # enable sets server_script_enable=0; disable sets server_script_enable=1
+        value = 0 if command.endswith(".enable") else 1
+        return command_boolean_config(command, target, "server_script_enable", None if command.endswith(".status") else value)
     if command.startswith("cors."):
         return command_cors(command, target, args)
     if command.startswith("site_setup."):
@@ -1886,6 +1892,7 @@ def dispatch(command: str, target: dict[str, Any], args: dict[str, Any]) -> dict
     if command.startswith("oauth."):
         return command_oauth(command, target, args)
     raise CommandError("COMMAND_UNSUPPORTED", "command is contracted but not implemented", "Unsupported")
+    
 
 
 current_request: dict[str, Any] = {}
