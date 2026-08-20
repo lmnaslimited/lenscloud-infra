@@ -31,6 +31,10 @@ COMMANDS = {
     "restore.status",
     "maintenance_mode.enable",
     "maintenance_mode.disable",
+    "scheduler.enable",
+    "scheduler.disable",
+    "server_script.enable",
+    "server_script.disable",
     "maintenance_mode.status",
     "developer_mode.enable",
     "developer_mode.disable",
@@ -130,7 +134,7 @@ APPROVED_SITE_CONFIG_KEYS = {
     item.strip()
     for item in os.environ.get(
         "LENS_COMMAND_ALLOWED_SITE_CONFIG_KEYS",
-        "maintenance_mode,developer_mode,allow_cors,server_script_enabled,client_script_enabled",
+        "maintenance_mode,developer_mode,allow_cors,server_script_enabled,client_script_enabled,pause_scheduler",
     ).split(",")
     if item.strip()
 }
@@ -459,13 +463,14 @@ def site_config_label(key: str) -> str:
         "client_script_enabled": "Client script",
         "developer_mode": "Developer mode",
         "maintenance_mode": "Maintenance mode",
+        "pause_scheduler": "Pause scheduler",
         "server_script_enabled": "Server script",
     }
     return labels.get(key, f"Site config: {key}")
 
 
 def display_for_site_config(key: str, value: Any) -> dict[str, Any]:
-    if key in {"maintenance_mode", "developer_mode", "server_script_enabled", "client_script_enabled"}:
+    if key in {"maintenance_mode", "developer_mode", "server_script_enabled", "client_script_enabled", "pause_scheduler"}:
         raw_value = int(value or 0)
         return {
             "label": site_config_label(key),
@@ -1868,6 +1873,14 @@ def dispatch(command: str, target: dict[str, Any], args: dict[str, Any]) -> dict
     if command.startswith("developer_mode."):
         value = 1 if command.endswith(".enable") else 0
         return command_boolean_config(command, target, "developer_mode", None if command.endswith(".status") else value)
+    if command.startswith("scheduler."):
+        # enable sets pause_scheduler=0; disable sets pause_scheduler=1
+        value = 0 if command.endswith(".enable") else 1
+        return command_boolean_config(command, target, "pause_scheduler", None if command.endswith(".status") else value)
+    if command.startswith("server_script."):
+        # enable sets server_script_enable=0; disable sets server_script_enable=1
+        value = 0 if command.endswith(".enable") else 1
+        return command_boolean_config(command, target, "server_script_enable", None if command.endswith(".status") else value)
     if command.startswith("cors."):
         return command_cors(command, target, args)
     if command.startswith("site_setup."):
@@ -1879,6 +1892,7 @@ def dispatch(command: str, target: dict[str, Any], args: dict[str, Any]) -> dict
     if command.startswith("oauth."):
         return command_oauth(command, target, args)
     raise CommandError("COMMAND_UNSUPPORTED", "command is contracted but not implemented", "Unsupported")
+    
 
 
 current_request: dict[str, Any] = {}

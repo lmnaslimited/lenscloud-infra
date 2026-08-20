@@ -404,6 +404,8 @@ spec:
           'restore',
           'maintenance_mode',
           'developer_mode',
+          'scheduler',
+          'server_script'
           'site_config',
           'cors',
           'site_setup',
