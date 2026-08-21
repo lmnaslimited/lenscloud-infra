@@ -155,8 +155,10 @@ Build example:
 
 ```bash
 docker build \
-  -t ghcr.io/lmnaslimited/lenscloud-bench-command-runner:v0.1.12 \
+  -t ghcr.io/lmnaslimited/lenscloud-bench-command-runner:v0.1.20 \
   bench-command-runner
+
+docker push ghcr.io/lmnaslimited/lenscloud-bench-command-runner:v0.1.20
 ```
 
 Current published image:
