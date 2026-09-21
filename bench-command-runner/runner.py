@@ -55,6 +55,7 @@ COMMANDS = {
     "bench_test.status",
     "latp.trigger",
     "latp.status",
+    "migration.run"
 }
 
 RUNNER_PENDING = {
@@ -1416,6 +1417,77 @@ def command_bench_update(command: str, target: dict[str, Any], args: dict[str, A
         },
     )
 
+    def run_bench_migrate(site: str, timeout: int) -> dict[str, Any]:
+    if FAKE_FRAPPE_SETUP:
+        return {
+            "site": site,
+            "changed": True,
+            "exit_code": 0,
+            "operation": f"bench --site {site} migrate",
+        }
+
+    executable = bench_executable()
+    failed_result: subprocess.CompletedProcess[str] | None = None
+    
+    try:
+        with prepared_bench_apps_txt():
+            completed = subprocess.run(
+                executable + ["--site", site, "migrate"],
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                cwd=str(BENCH_PATH),
+                env=dict(os.environ),
+                timeout=timeout,
+                check=False,
+            )
+            if completed.returncode != 0:
+                failed_result = completed
+    except subprocess.TimeoutExpired as exc:
+        raise CommandError("TIMEOUT", "bench migrate command timed out", "Timed Out") from exc
+
+    exit_code = failed_result.returncode if failed_result else 0
+    return {
+        "site": site,
+        "changed": exit_code == 0,
+        "exit_code": exit_code,
+        "operation": f"bench --site {site} migrate",
+        "error_excerpt": sanitize((failed_result.stderr or failed_result.stdout or "")[-500:]) if failed_result else None,
+    }
+
+
+def command_bench_migrate(command: str, target: dict[str, Any], args: dict[str, Any]) -> dict[str, Any]:
+    site = str(target["site"])
+    # Migrations can take longer than standard tasks; defaults up to 900s
+    timeout = request_timeout_seconds(default=600, maximum=900)
+    state = run_bench_migrate(site, timeout)
+    exit_code = int(state.get("exit_code") or 0)
+    
+    return result(
+        phase="Succeeded" if exit_code == 0 else "Failed",
+        command=command,
+        target=target,
+        summary="Site migration completed" if exit_code == 0 else "Site migration failed",
+        changed=bool(state.get("changed")),
+        code=None if exit_code == 0 else "RUNNER_FAILED",
+        details={
+            "site": site,
+            "operation": state.get("operation"),
+            "exit_code": exit_code,
+            "error_excerpt": state.get("error_excerpt"),
+        },
+        display={
+            "label": "Site Migration",
+            "value": "Completed" if exit_code == 0 else "Failed",
+            "kind": "bench-migrate",
+            "rawValue": {
+                "site": site,
+                "exit_code": exit_code,
+            },
+            "safe": True,
+        },
+    )
+
 
 def oauth_display(state: dict[str, Any]) -> dict[str, Any]:
     configured = bool(state.get("configured"))
@@ -1889,6 +1961,8 @@ def dispatch(command: str, target: dict[str, Any], args: dict[str, Any]) -> dict
         return command_site_app_install(command, target, args)
     if command.startswith("bench."):
         return command_bench_update(command, target, args)
+    if command.startswith("migration."):
+        return command_bench_migrate(command, target, args)
     if command.startswith("oauth."):
         return command_oauth(command, target, args)
     raise CommandError("COMMAND_UNSUPPORTED", "command is contracted but not implemented", "Unsupported")
