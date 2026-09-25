@@ -414,7 +414,8 @@ spec:
           'bench',
           'oauth',
           'bench_test',
-          'latp'
+          'latp',
+          'migration'
         ]
         && object.spec.template.spec.restartPolicy == 'Never'
         && object.spec.template.spec.containers.size() == 1
